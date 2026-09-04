@@ -1,5 +1,7 @@
 package com.slygames.facade.features.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,13 +17,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slygames.facade.R
 import com.slygames.facade.core.permission.FacadePermission
@@ -41,6 +47,25 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) { permissionsViewModel.refresh() }
+
+    // Every permission here can only change while Facade is backgrounded (the user granting it
+    // in system Settings, or via the RoleManager request sheet below), so re-check on resume.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) permissionsViewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // RoleManager.createRequestRoleIntent's contract requires launching via
+    // startActivityForResult (a plain startActivity leaves the system unable to identify the
+    // calling package, so the request sheet finishes immediately without showing UI - see
+    // RequestRoleActivity's "Package name cannot be null or empty" log).
+    val roleRequestLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { permissionsViewModel.refresh() }
 
     Scaffold(
         modifier = modifier,
@@ -157,9 +182,12 @@ fun SettingsScreen(
                     state = permissionStates[permission] ?: PermissionState.DENIED,
                     onGrantClick = {
                         val intent = permissionsViewModel.buildRequestIntent(permission)
-                        if (intent != null) context.startActivity(intent)
-                        else if (permission == FacadePermission.SHIZUKU) {
-                            permissionsViewModel.requestShizukuPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
+                        when {
+                            intent != null && permission == FacadePermission.DEFAULT_LAUNCHER ->
+                                roleRequestLauncher.launch(intent)
+                            intent != null -> context.startActivity(intent)
+                            permission == FacadePermission.SHIZUKU ->
+                                permissionsViewModel.requestShizukuPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                         }
                     }
                 )
