@@ -64,12 +64,13 @@ private fun FacadeNavHost(
             WorkspaceScreen(
                 modifier = Modifier,
                 widgetHostViewManager = widgetHostViewManager,
-                onOpenAppDrawer = { navController.navigate(Routes.APP_DRAWER) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenAppDrawer = { navController.navigate(Routes.APP_DRAWER) }
             )
         }
         composable(Routes.APP_DRAWER) {
-            AppDrawerScreen()
+            AppDrawerScreen(
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(

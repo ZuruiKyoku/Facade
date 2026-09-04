@@ -10,7 +10,7 @@
 
     <!-- Permission onboarding -->
     <string name="permission_default_launcher_title">Set Facade as your home app</string>
-    <string name="permission_default_launcher_body">Facade needs to be your default launcher to manage your home screen, dock, and app drawer.</string>
+    <string name="permission_default_launcher_body">Facade needs to be your default launcher to manage your home screen and app drawer.</string>
     <string name="permission_overlay_title">Allow display over other apps</string>
     <string name="permission_overlay_body">Needed to host floating widgets and HUD overlays above other apps.</string>
     <string name="permission_accessibility_title">Enable the Facade overlay service</string>
@@ -35,7 +35,6 @@
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_section_desktop">Desktop</string>
-    <string name="settings_section_dock">Dock</string>
     <string name="settings_section_app_drawer">App drawer</string>
     <string name="settings_section_wallpaper">Wallpaper</string>
     <string name="settings_section_overlays">Overlays</string>

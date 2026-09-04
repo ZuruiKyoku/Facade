@@ -12,9 +12,8 @@ val FacadeShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp)
 )
 
-/** Shape tokens used only by the non-Compose workspace grid (folder previews, dock pill). */
+/** Shape tokens used only by the non-Compose workspace grid (folder previews). */
 object WorkspaceShapes {
     val FolderPreviewCorner = 20.dp
     val IconBadgeCorner = 8.dp
-    val DockPillCorner = 28.dp
 }

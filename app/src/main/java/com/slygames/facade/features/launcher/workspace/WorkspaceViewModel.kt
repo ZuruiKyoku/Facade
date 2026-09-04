@@ -77,7 +77,7 @@ class WorkspaceViewModel @Inject constructor(
                 .collect { (apps, prefs) ->
                     if (seedAttempted || prefs.hasSeededDefaultLayout || apps.isEmpty()) return@collect
                     seedAttempted = true
-                    workspaceRepository.seedDefaultLayoutIfEmpty(apps, prefs.dockSlotCount, prefs.gridColumns, prefs.gridRows)
+                    workspaceRepository.seedDefaultLayoutIfEmpty(apps, prefs.gridColumns, prefs.gridRows)
                     preferencesRepository.setHasSeededDefaultLayout(true)
                 }
         }

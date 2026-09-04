@@ -49,12 +49,6 @@ class WorkspaceRepository @Inject constructor(
                 .map { (page, items) -> WorkspacePage(page, items) }
         }
 
-    fun observeDockItems(): Flow<List<WorkspaceItem>> =
-        combine(workspaceDao.observeDockItems(), appRepository.apps, folderDao.observeAll()) { entities, _, folders ->
-            val folderNames = folders.associate { it.id to it.name }
-            entities.mapNotNull { it.toDomainOrNull(folderNames) }
-        }
-
     fun observeFolder(folderId: Long): Flow<WorkspaceItem.Folder?> =
         folderDao.observeFolderWithItems(folderId).map { withItems ->
             withItems?.let { (folder, items) ->
@@ -125,25 +119,21 @@ class WorkspaceRepository @Inject constructor(
         workspaceDao.countAtCell(page, cellX, cellY) > 0
 
     /**
-     * First-run convenience: rather than land on a totally empty grid and
-     * dock, fill the dock's slots and page 0 with the first installed apps
-     * (already alphabetically sorted by [AppRepository]) the very first time
-     * the workspace has zero placed items. A no-op once anything has ever
-     * been placed, so it never fights a user who intentionally clears their
-     * layout - callers gate repeat attempts with
-     * [com.slygames.facade.data.local.datastore.LauncherPreferencesRepository].
+     * First-run convenience: rather than land on a totally empty grid, fill
+     * page 0 with the first installed apps (already alphabetically sorted by
+     * [AppRepository]) the very first time the workspace has zero placed
+     * items. A no-op once anything has ever been placed, so it never fights
+     * a user who intentionally clears their layout - callers gate repeat
+     * attempts with [com.slygames.facade.data.local.datastore.LauncherPreferencesRepository].
      */
-    suspend fun seedDefaultLayoutIfEmpty(apps: List<AppItem>, dockSlotCount: Int, columns: Int, rows: Int) {
+    suspend fun seedDefaultLayoutIfEmpty(apps: List<AppItem>, columns: Int, rows: Int) {
         if (apps.isEmpty() || workspaceDao.countAll() > 0) return
 
-        val dockApps = apps.take(dockSlotCount)
-        val desktopApps = apps.drop(dockApps.size).take(columns * rows)
-
-        val dockEntities = dockApps.mapIndexed { index, app -> app.toWorkspaceEntity(page = 0, cellX = index, cellY = 0, isDock = true) }
+        val desktopApps = apps.take(columns * rows)
         val desktopEntities = desktopApps.mapIndexed { index, app ->
             app.toWorkspaceEntity(page = 0, cellX = index % columns, cellY = index / columns, isDock = false)
         }
-        workspaceDao.insertAll(dockEntities + desktopEntities)
+        workspaceDao.insertAll(desktopEntities)
     }
 
     private fun AppItem.toWorkspaceEntity(page: Int, cellX: Int, cellY: Int, isDock: Boolean) = WorkspaceItemEntity(

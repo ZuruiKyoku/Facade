@@ -9,7 +9,7 @@ A Nova-inspired home screen launcher and rootless device personalization suite f
 - **Nova-Style Launcher Engine** — a custom coordinate-based `ViewGroup` workspace
   (`features/launcher/workspace`) for the paginated desktop grid and drag-and-drop, a
   native `AppWidgetHost` integration (`features/launcher/widget`), and a Compose-driven
-  dock (`features/launcher/dock`) and app drawer (`features/appdrawer`).
+  app drawer (`features/appdrawer`), reached via a swipe up from the workspace.
 - **Live Wallpaper Engine** — `services/wallpaper/FacadeWallpaperService`, a
   `WallpaperService.Engine` binding a looping AndroidX Media3 `ExoPlayer` directly to the
   wallpaper surface, paused whenever the surface is hidden.
@@ -26,7 +26,7 @@ Clean Architecture + MVI/MVVM, Kotlin Coroutines & `StateFlow`, Hilt for DI, Roo
 workspace layout database, and Jetpack DataStore for launcher preferences. UI is a
 hybrid split: a plain `ViewGroup` hierarchy for the desktop grid (60fps drag-and-drop,
 zero-jank nested `AppWidgetHostView`s) and Jetpack Compose + Material 3 everywhere else
-(app drawer, dock, settings, wallpaper picker, overlay/system-tweak screens).
+(app drawer, settings, wallpaper picker, overlay/system-tweak screens).
 
 See `app/src/main/java/com/slygames/facade/` for the full package layout.
 

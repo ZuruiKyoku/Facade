@@ -18,7 +18,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -33,26 +32,23 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slygames.facade.core.util.IntentDispatcher
 import com.slygames.facade.data.model.WorkspaceItem
-import com.slygames.facade.features.launcher.dock.DockBar
 import com.slygames.facade.features.launcher.widget.FacadeAppWidgetHostViewManager
 
 /**
  * Composition root for the home screen: hosts the coordinate-based
- * [WorkspaceGridView] via [AndroidView] for the desktop grid, layers the
- * Compose [DockBar] on top, and owns the widget host's start/stopListening
- * lifecycle pairing.
+ * [WorkspaceGridView] via [AndroidView] for the desktop grid and owns the
+ * widget host's start/stopListening lifecycle pairing. Settings is reached
+ * from the app drawer's gear icon, not from here - see [AppDrawerScreen].
  */
 @Composable
 fun WorkspaceScreen(
     onOpenAppDrawer: () -> Unit,
-    onOpenSettings: () -> Unit,
     widgetHostViewManager: FacadeAppWidgetHostViewManager,
     modifier: Modifier = Modifier,
     viewModel: WorkspaceViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val folderState by viewModel.openFolder.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, widgetHostViewManager) {
@@ -106,7 +102,9 @@ fun WorkspaceScreen(
 
                         override fun onPageChanged(pageIndex: Int) = Unit
 
-                        override fun onWorkspaceLongPressed(page: Int, cellX: Int, cellY: Int) = onOpenSettings()
+                        // Settings is reached from the app drawer's gear icon instead; nothing to
+                        // do on a long-press of empty space for now.
+                        override fun onWorkspaceLongPressed(page: Int, cellX: Int, cellY: Int) = Unit
                     }
                 }
             },
@@ -114,14 +112,6 @@ fun WorkspaceScreen(
                 view.configureGrid(uiState.gridColumns, uiState.gridRows)
                 view.submitPages(uiState.pagesByIndex)
             }
-        )
-
-        DockBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            onAppClick = { appItem ->
-                IntentDispatcher.launchApp(context, appItem.packageName, appItem.activityName)
-            },
-            onAppLongClick = { /* TODO: dock item context menu (remove / app info) */ }
         )
     }
 

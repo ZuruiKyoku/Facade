@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slygames.facade.R
 import com.slygames.facade.core.permission.FacadePermission
 import com.slygames.facade.core.permission.PermissionState
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(
@@ -75,7 +76,7 @@ fun SettingsScreen(
             item { SectionHeader(stringResource(R.string.settings_section_desktop)) }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_grid_columns)) },
+                    headlineContent = { Text("${stringResource(R.string.settings_grid_columns)} (${prefs.gridColumns})") },
                     supportingContent = {
                         Slider(
                             value = prefs.gridColumns.toFloat(),
@@ -88,7 +89,7 @@ fun SettingsScreen(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_grid_rows)) },
+                    headlineContent = { Text("${stringResource(R.string.settings_grid_rows)} (${prefs.gridRows})") },
                     supportingContent = {
                         Slider(
                             value = prefs.gridRows.toFloat(),
@@ -101,7 +102,9 @@ fun SettingsScreen(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.settings_icon_scale)) },
+                    headlineContent = {
+                        Text("${stringResource(R.string.settings_icon_scale)} (${(prefs.iconScale * 100).roundToInt()}%)")
+                    },
                     supportingContent = {
                         Slider(
                             value = prefs.iconScale,
@@ -124,22 +127,6 @@ fun SettingsScreen(
                     headlineContent = { Text("Wallpaper-based color (Material You)") },
                     trailingContent = {
                         Switch(checked = prefs.dynamicColorEnabled, onCheckedChange = settingsViewModel::setDynamicColorEnabled)
-                    }
-                )
-            }
-            item { HorizontalDivider() }
-
-            item { SectionHeader(stringResource(R.string.settings_section_dock)) }
-            item {
-                ListItem(
-                    headlineContent = { Text("Dock icon slots") },
-                    supportingContent = {
-                        Slider(
-                            value = prefs.dockSlotCount.toFloat(),
-                            valueRange = 3f..7f,
-                            steps = 3,
-                            onValueChange = { settingsViewModel.setDockSlotCount(it.toInt()) }
-                        )
                     }
                 )
             }

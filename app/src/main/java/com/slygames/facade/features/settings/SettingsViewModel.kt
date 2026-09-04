@@ -23,10 +23,6 @@ class SettingsViewModel @Inject constructor(
         preferencesRepository.setGridSize(columns, rows)
     }
 
-    fun setDockSlotCount(count: Int) = viewModelScope.launch {
-        preferencesRepository.setDockSlotCount(count)
-    }
-
     fun setIconScale(scale: Float) = viewModelScope.launch {
         preferencesRepository.setIconScale(scale)
     }
