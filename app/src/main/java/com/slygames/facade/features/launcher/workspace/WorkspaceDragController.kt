@@ -40,7 +40,13 @@ class WorkspaceDragController(private val callbacks: Callbacks) {
         lastRawY = rawY
         view.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).alpha(DRAG_ALPHA).setDuration(ANIM_DURATION_MS).start()
         view.translationZ = DRAG_ELEVATION_PX
-        (view.parent as? android.view.ViewGroup)?.requestDisallowInterceptTouchEvent(true)
+        // Deliberately NOT calling requestDisallowInterceptTouchEvent here: [WorkspaceGridView] is
+        // this drag's own ANCESTOR, not a sibling it needs protection from. Disallowing intercept
+        // on the child's parent chain would suppress WorkspaceGridView.onInterceptTouchEvent for
+        // the rest of this gesture too - which is exactly the mechanism its `isDragging` check
+        // relies on to steal the gesture from the still-touched icon. Calling it here left the
+        // drag started-but-frozen (no updateDrag/endDrag calls ever reached), permanently stuck
+        // dragging and breaking every touch afterward.
     }
 
     fun updateDrag(rawX: Float, rawY: Float) {
