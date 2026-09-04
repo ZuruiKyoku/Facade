@@ -77,6 +77,19 @@ class WorkspaceRepository @Inject constructor(
             )
         )
 
+    /** Places [appItem] at the first unoccupied cell of [page] (row-major), or does nothing if the page is already full. Shared by WorkspaceViewModel's own placement flow and the app drawer's drag-out-to-add, which has no grid of its own to compute a drop cell against. */
+    suspend fun placeAppOnFirstFreeCell(appItem: AppItem, page: Int, columns: Int, rows: Int): Boolean {
+        for (y in 0 until rows) {
+            for (x in 0 until columns) {
+                if (!isCellOccupied(page, x, y)) {
+                    placeApp(appItem, page, x, y)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     suspend fun placeWidget(widgetItem: WidgetItem, page: Int, cellX: Int, cellY: Int): Long =
         workspaceDao.insert(
             WorkspaceItemEntity(

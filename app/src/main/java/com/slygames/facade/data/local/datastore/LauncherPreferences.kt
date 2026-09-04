@@ -38,6 +38,8 @@ data class LauncherPreferences(
     val gridRows: Int = DEFAULT_GRID_ROWS,
     val dockSlotCount: Int = DEFAULT_DOCK_SLOTS,
     val iconScale: Float = 1.0f,
+    /** Independent from [iconScale] - the workspace's fixed 5x6-ish grid and the drawer's fixed 4-column grid have different density needs. */
+    val appDrawerIconScale: Float = 1.0f,
     val showIconLabels: Boolean = true,
     val dynamicColorEnabled: Boolean = true,
     val infiniteScrollEnabled: Boolean = false,

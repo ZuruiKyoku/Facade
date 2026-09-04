@@ -122,14 +122,7 @@ class WorkspaceViewModel @Inject constructor(
 
     fun placeAppOnFirstFreeCell(appItem: AppItem, page: Int) {
         viewModelScope.launch {
-            for (y in 0 until uiState.value.gridRows) {
-                for (x in 0 until uiState.value.gridColumns) {
-                    if (!workspaceRepository.isCellOccupied(page, x, y)) {
-                        workspaceRepository.placeApp(appItem, page, x, y)
-                        return@launch
-                    }
-                }
-            }
+            workspaceRepository.placeAppOnFirstFreeCell(appItem, page, uiState.value.gridColumns, uiState.value.gridRows)
         }
     }
 }

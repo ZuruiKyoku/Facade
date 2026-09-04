@@ -2,15 +2,18 @@ package com.slygames.facade.features.appdrawer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slygames.facade.data.local.datastore.LauncherPreferencesRepository
 import com.slygames.facade.data.model.AppItem
 import com.slygames.facade.data.repository.AppRepository
 import com.slygames.facade.data.repository.IconPackRepository
+import com.slygames.facade.data.repository.WorkspaceRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,7 +21,8 @@ import javax.inject.Inject
 data class AppDrawerUiState(
     val query: String = "",
     val allApps: List<AppItem> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val iconScale: Float = 1f
 ) {
     /** Apps filtered by [query] against label, then grouped by the first uppercase letter for fast-scroll sectioning. */
     val filteredApps: List<AppItem> by lazy {
@@ -44,7 +48,9 @@ data class AppDrawerUiState(
 @HiltViewModel
 class AppDrawerViewModel @Inject constructor(
     private val appRepository: AppRepository,
-    private val iconPackRepository: IconPackRepository
+    private val iconPackRepository: IconPackRepository,
+    private val workspaceRepository: WorkspaceRepository,
+    private val preferencesRepository: LauncherPreferencesRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -52,9 +58,15 @@ class AppDrawerViewModel @Inject constructor(
     val uiState: StateFlow<AppDrawerUiState> = combine(
         appRepository.apps,
         appRepository.isLoading,
-        _query
-    ) { apps, loading, query ->
-        AppDrawerUiState(query = query, allApps = applyIconPackOverrides(apps), isLoading = loading)
+        _query,
+        preferencesRepository.preferencesFlow
+    ) { apps, loading, query, prefs ->
+        AppDrawerUiState(
+            query = query,
+            allApps = applyIconPackOverrides(apps),
+            isLoading = loading,
+            iconScale = prefs.appDrawerIconScale
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppDrawerUiState())
 
     init {
@@ -69,6 +81,21 @@ class AppDrawerViewModel @Inject constructor(
         viewModelScope.launch {
             iconPackRepository.setActivePack(packageName)
             appRepository.refresh()
+        }
+    }
+
+    /**
+     * Drag-out-of-the-drawer add: the workspace grid isn't even composed while the drawer is
+     * showing (they're separate NavHost destinations, not an overlay over a live workspace), so
+     * there's no view to literally drop onto. Placing directly through the repository sidesteps
+     * that entirely - it's a plain data write, and the workspace picks it up reactively via its
+     * own Flow the next time it's actually on screen. Always targets page 0, same simplification
+     * placeAppOnFirstFreeCell's callers already made.
+     */
+    fun addAppToHomeScreen(app: AppItem) {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.preferencesFlow.first()
+            workspaceRepository.placeAppOnFirstFreeCell(app, page = 0, prefs.gridColumns, prefs.gridRows)
         }
     }
 

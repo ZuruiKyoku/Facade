@@ -3,9 +3,10 @@ package com.slygames.facade.features.appdrawer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +52,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -61,6 +64,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slygames.facade.R
@@ -120,94 +125,165 @@ fun AppDrawerScreen(
         }
     }
 
-    Row(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .offset { IntOffset(0, pullOffset.value.roundToInt()) }
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, bottom = 16.dp)
-            ) {
-                OutlinedTextField(
-                    value = uiState.query,
-                    onValueChange = viewModel::onQueryChange,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.app_drawer_search_hint)) },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true
-                )
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title))
+    // Drag-out-to-add: the app drawer and workspace are separate NavHost destinations (the
+    // workspace isn't even composed while this screen is up), so there's no shared view to drop
+    // onto - a long-press-drag here just picks up a floating ghost of the icon, and releasing it
+    // (past a small movement threshold, so a stationary long-press is a no-op rather than an
+    // accidental add) hands the app straight to the repository and dismisses back to the
+    // workspace, which picks up the new placement reactively once it's on screen again.
+    var draggedApp by remember { mutableStateOf<AppItem?>(null) }
+    var ghostPosition by remember { mutableStateOf(Offset.Zero) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    val ghostSizePx = with(density) { GHOST_ICON_SIZE_DP.dp.toPx() }
+    val dragConfirmThresholdPx = with(density) { 24.dp.toPx() }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .offset { IntOffset(0, pullOffset.value.roundToInt()) }
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 8.dp, bottom = 16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.query,
+                        onValueChange = viewModel::onQueryChange,
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.app_drawer_search_hint)) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        singleLine = true
+                    )
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_title))
+                    }
+                }
+
+                if (uiState.filteredApps.isEmpty() && !uiState.isLoading) {
+                    val emptyStateDragState = rememberDraggableState { delta ->
+                        if (delta > 0) {
+                            coroutineScope.launch { pullOffset.snapTo((pullOffset.value + delta).coerceAtLeast(0f)) }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .draggable(
+                                state = emptyStateDragState,
+                                orientation = Orientation.Vertical,
+                                onDragStopped = { onPullEnded() }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No apps found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(4),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(gridNestedScrollConnection),
+                        contentPadding = PaddingValues(bottom = 96.dp)
+                    ) {
+                        items(uiState.filteredApps, key = { it.componentKey }) { app ->
+                            AppDrawerCell(
+                                app = app,
+                                iconScale = uiState.iconScale,
+                                onClick = { IntentDispatcher.launchApp(context, app.packageName, app.activityName) },
+                                onDragStart = { originInRoot, pointerOffset ->
+                                    draggedApp = app
+                                    dragDistance = 0f
+                                    ghostPosition = originInRoot + pointerOffset -
+                                        Offset(ghostSizePx / 2f, ghostSizePx / 2f)
+                                },
+                                onDrag = { dragAmount ->
+                                    ghostPosition += dragAmount
+                                    dragDistance += dragAmount.getDistance()
+                                },
+                                onDragEnd = {
+                                    if (dragDistance >= dragConfirmThresholdPx) {
+                                        viewModel.addAppToHomeScreen(app)
+                                        onDismiss()
+                                    }
+                                    draggedApp = null
+                                },
+                                onDragCancel = { draggedApp = null }
+                            )
+                        }
+                    }
                 }
             }
 
-            if (uiState.filteredApps.isEmpty() && !uiState.isLoading) {
-                val emptyStateDragState = rememberDraggableState { delta ->
-                    if (delta > 0) {
-                        coroutineScope.launch { pullOffset.snapTo((pullOffset.value + delta).coerceAtLeast(0f)) }
+            FastScrollIndex(
+                letters = uiState.sectionIndex,
+                onLetterSelected = { letter ->
+                    uiState.sectionStartIndex[letter]?.let { index ->
+                        coroutineScope.launch { gridState.animateScrollToItem(index) }
                     }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .draggable(
-                            state = emptyStateDragState,
-                            orientation = Orientation.Vertical,
-                            onDragStopped = { onPullEnded() }
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No apps found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(gridNestedScrollConnection),
-                    contentPadding = PaddingValues(bottom = 96.dp)
-                ) {
-                    items(uiState.filteredApps, key = { it.componentKey }) { app ->
-                        AppDrawerCell(
-                            app = app,
-                            onClick = { IntentDispatcher.launchApp(context, app.packageName, app.activityName) },
-                            onLongClick = { IntentDispatcher.openAppInfo(context, app.packageName) }
-                        )
-                    }
-                }
-            }
+                },
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(24.dp)
+            )
         }
 
-        FastScrollIndex(
-            letters = uiState.sectionIndex,
-            onLetterSelected = { letter ->
-                uiState.sectionStartIndex[letter]?.let { index ->
-                    coroutineScope.launch { gridState.animateScrollToItem(index) }
-                }
-            },
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(24.dp)
-        )
+        draggedApp?.let { app ->
+            app.icon?.let { icon ->
+                Image(
+                    bitmap = icon.toImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset { IntOffset(ghostPosition.x.roundToInt(), ghostPosition.y.roundToInt()) }
+                        .size(GHOST_ICON_SIZE_DP.dp)
+                        .scale(1.15f)
+                        .alpha(0.9f)
+                )
+            }
+        }
     }
 }
 
+private const val GHOST_ICON_SIZE_DP = 56
+
+/**
+ * Tap launches the app as always. Long-press picks it up for a drag (see
+ * [AppDrawerScreen]'s ghost overlay) - a plain long-press-then-release
+ * without moving is a no-op rather than opening app info, since between
+ * this and the fast-scroll rail there's no spare gesture left to carry
+ * that separately; app info remains reachable the normal system way.
+ */
 @Composable
 private fun AppDrawerCell(
     app: AppItem,
+    iconScale: Float,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onDragStart: (originInRoot: Offset, pointerOffsetInCell: Offset) -> Unit,
+    onDrag: (dragAmount: Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit
 ) {
+    var originInRoot by remember { mutableStateOf(Offset.Zero) }
     Column(
         modifier = Modifier
             .padding(8.dp)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .onGloballyPositioned { originInRoot = it.positionInRoot() }
+            .pointerInput(app) {
+                detectTapGestures(onTap = { onClick() })
+            }
+            .pointerInput(app) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset -> onDragStart(originInRoot, offset) },
+                    onDrag = { change, dragAmount -> change.consume(); onDrag(dragAmount) },
+                    onDragEnd = { onDragEnd() },
+                    onDragCancel = onDragCancel
+                )
+            },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         app.icon?.let { icon ->
@@ -217,6 +293,7 @@ private fun AppDrawerCell(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
+                    .scale(iconScale)
             )
         }
         Text(

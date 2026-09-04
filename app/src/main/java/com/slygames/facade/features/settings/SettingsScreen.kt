@@ -132,6 +132,23 @@ fun SettingsScreen(
             }
             item { HorizontalDivider() }
 
+            item { SectionHeader(stringResource(R.string.settings_section_app_drawer)) }
+            item {
+                ListItem(
+                    headlineContent = {
+                        Text("Icon size (${(prefs.appDrawerIconScale * 100).roundToInt()}%)")
+                    },
+                    supportingContent = {
+                        Slider(
+                            value = prefs.appDrawerIconScale,
+                            valueRange = 0.5f..1.5f,
+                            onValueChange = { settingsViewModel.setAppDrawerIconScale(it) }
+                        )
+                    }
+                )
+            }
+            item { HorizontalDivider() }
+
             item { SectionHeader(stringResource(R.string.settings_section_wallpaper)) }
             item {
                 ListItem(

@@ -35,6 +35,7 @@ class LauncherPreferencesRepository @Inject constructor(
         val GRID_ROWS = intPreferencesKey("grid_rows")
         val DOCK_SLOT_COUNT = intPreferencesKey("dock_slot_count")
         val ICON_SCALE = floatPreferencesKey("icon_scale")
+        val APP_DRAWER_ICON_SCALE = floatPreferencesKey("app_drawer_icon_scale")
         val SHOW_ICON_LABELS = booleanPreferencesKey("show_icon_labels")
         val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
         val INFINITE_SCROLL_ENABLED = booleanPreferencesKey("infinite_scroll_enabled")
@@ -69,6 +70,10 @@ class LauncherPreferencesRepository @Inject constructor(
 
     suspend fun setIconScale(scale: Float) {
         dataStore.edit { it[Keys.ICON_SCALE] = scale.coerceIn(0.5f, 1.5f) }
+    }
+
+    suspend fun setAppDrawerIconScale(scale: Float) {
+        dataStore.edit { it[Keys.APP_DRAWER_ICON_SCALE] = scale.coerceIn(0.5f, 1.5f) }
     }
 
     suspend fun setShowIconLabels(show: Boolean) {
@@ -124,6 +129,7 @@ class LauncherPreferencesRepository @Inject constructor(
             gridRows = this[Keys.GRID_ROWS] ?: defaults.gridRows,
             dockSlotCount = this[Keys.DOCK_SLOT_COUNT] ?: defaults.dockSlotCount,
             iconScale = this[Keys.ICON_SCALE] ?: defaults.iconScale,
+            appDrawerIconScale = this[Keys.APP_DRAWER_ICON_SCALE] ?: defaults.appDrawerIconScale,
             showIconLabels = this[Keys.SHOW_ICON_LABELS] ?: defaults.showIconLabels,
             dynamicColorEnabled = this[Keys.DYNAMIC_COLOR_ENABLED] ?: defaults.dynamicColorEnabled,
             infiniteScrollEnabled = this[Keys.INFINITE_SCROLL_ENABLED] ?: defaults.infiniteScrollEnabled,

@@ -27,6 +27,10 @@ class SettingsViewModel @Inject constructor(
         preferencesRepository.setIconScale(scale)
     }
 
+    fun setAppDrawerIconScale(scale: Float) = viewModelScope.launch {
+        preferencesRepository.setAppDrawerIconScale(scale)
+    }
+
     fun setShowIconLabels(show: Boolean) = viewModelScope.launch {
         preferencesRepository.setShowIconLabels(show)
     }
