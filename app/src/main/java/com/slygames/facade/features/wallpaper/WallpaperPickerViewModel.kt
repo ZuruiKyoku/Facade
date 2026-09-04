@@ -4,8 +4,9 @@ import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slygames.facade.data.local.datastore.WallpaperPreferences
@@ -18,19 +19,16 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-data class WallpaperMediaEntry(val uri: Uri, val displayName: String, val durationMs: Long)
-
 data class WallpaperPickerUiState(
-    val availableVideos: List<WallpaperMediaEntry> = emptyList(),
     val preferences: WallpaperPreferences = WallpaperPreferences(),
-    val isLoading: Boolean = false
+    /** Keyed by URI string; a present-but-null value means the thumbnail failed to decode (shown as a placeholder), absent means still loading. */
+    val thumbnails: Map<String, Bitmap?> = emptyMap()
 )
 
 @HiltViewModel
@@ -40,46 +38,49 @@ class WallpaperPickerViewModel @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
-    private val _videos = MutableStateFlow<List<WallpaperMediaEntry>>(emptyList())
-    private val _isLoading = MutableStateFlow(false)
+    private val _thumbnails = MutableStateFlow<Map<String, Bitmap?>>(emptyMap())
 
     val uiState: StateFlow<WallpaperPickerUiState> = combine(
-        _videos,
         preferencesRepository.preferencesFlow,
-        _isLoading
-    ) { videos, prefs, loading ->
-        WallpaperPickerUiState(availableVideos = videos, preferences = prefs, isLoading = loading)
+        _thumbnails
+    ) { prefs, thumbnails ->
+        WallpaperPickerUiState(preferences = prefs, thumbnails = thumbnails)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WallpaperPickerUiState())
 
     init {
-        loadLocalVideos()
-    }
-
-    fun loadLocalVideos() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _videos.value = withContext(ioDispatcher) { queryLocalVideos() }
-            _isLoading.value = false
+            preferencesRepository.preferencesFlow.collect { prefs ->
+                loadMissingThumbnails(prefs.selectedMediaUris)
+            }
         }
     }
 
-    fun selectMedia(uri: Uri) {
+    /** Adds newly-picked videos to the pool, taking a persistable read grant on each where the source supports it (some picker-returned URIs don't - the wallpaper service falls back gracefully if a grant didn't survive to the next read). */
+    fun addSelectedVideos(uris: List<Uri>) {
+        if (uris.isEmpty()) return
         viewModelScope.launch {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: SecurityException) {
-                // Some providers (e.g. non-tree DocumentsProvider results) don't support persistable grants;
-                // FacadeWallpaperService falls back to a fresh pick if this URI can't be opened later.
+            uris.forEach { uri ->
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: SecurityException) {
+                    // Not all providers support persistable grants; playback still works for the
+                    // current process, it just may need to be re-picked after a reboot.
+                }
             }
-            preferencesRepository.setSelectedMedia(uri.toString())
+            preferencesRepository.addSelectedMediaUris(uris.map { it.toString() }.toSet())
+        }
+    }
+
+    fun removeSelectedVideo(uriString: String) {
+        viewModelScope.launch {
+            preferencesRepository.removeSelectedMediaUri(uriString)
+            _thumbnails.value = _thumbnails.value - uriString
         }
     }
 
     fun setMuted(muted: Boolean) = viewModelScope.launch { preferencesRepository.setMuted(muted) }
     fun setLoop(loop: Boolean) = viewModelScope.launch { preferencesRepository.setLoop(loop) }
+    fun setShuffleIntervalMinutes(minutes: Int) = viewModelScope.launch { preferencesRepository.setShuffleIntervalMinutes(minutes) }
 
     /** Launches the platform's live-wallpaper preview/activation flow targeting [FacadeWallpaperService]. */
     fun buildActivateWallpaperIntent(): Intent =
@@ -90,33 +91,25 @@ class WallpaperPickerViewModel @Inject constructor(
             )
         }
 
-    private fun queryLocalVideos(): List<WallpaperMediaEntry> {
-        val results = mutableListOf<WallpaperMediaEntry>()
-        val projection = arrayOf(
-            MediaStore.Video.Media._ID,
-            MediaStore.Video.Media.DISPLAY_NAME,
-            MediaStore.Video.Media.DURATION
-        )
-        context.contentResolver.query(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            null,
-            null,
-            "${MediaStore.Video.Media.DATE_ADDED} DESC"
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idCol)
-                val uri = Uri.withAppendedPath(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id.toString())
-                results += WallpaperMediaEntry(
-                    uri = uri,
-                    displayName = cursor.getString(nameCol) ?: uri.lastPathSegment.orEmpty(),
-                    durationMs = cursor.getLong(durationCol)
-                )
-            }
+    private suspend fun loadMissingThumbnails(uris: Set<String>) {
+        val missing = uris.filterNot { _thumbnails.value.containsKey(it) }
+        if (missing.isEmpty()) return
+        val loaded = withContext(ioDispatcher) {
+            missing.associateWith { uriString -> loadVideoThumbnail(uriString) }
         }
-        return results
+        _thumbnails.value = _thumbnails.value + loaded
+    }
+
+    /** A frame from the start of the video, decoded directly from its content URI - works for any source (Photo Picker, document tree, etc.) without needing a local file path. */
+    private fun loadVideoThumbnail(uriString: String): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, Uri.parse(uriString))
+            retriever.getFrameAtTime(0)
+        } catch (_: Exception) {
+            null
+        } finally {
+            retriever.release()
+        }
     }
 }

@@ -19,12 +19,10 @@
         tools:ignore="ProtectedPermissions" />
 
     <!-- ============ Live Wallpaper Engine ============ -->
+    <!-- Photo/video selection goes through the system Photo Picker (PickVisualMedia), which
+         grants per-item read access without needing any broad media permission here. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.SET_WALLPAPER_HINTS" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <!-- ============ Elevated System Tweak Bridge (Shizuku) ============ -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"

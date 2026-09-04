@@ -1,29 +1,30 @@
 package com.slygames.facade.features.wallpaper
 
-import android.Manifest
 import android.app.WallpaperManager
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -32,24 +33,32 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
+
+/** Minutes between automatic switches; index 0 ("Off") means the pool never rotates on its own. */
+private val SHUFFLE_INTERVAL_PRESETS_MINUTES = listOf(0, 1, 5, 15, 30, 60)
+private const val MAX_SELECTABLE_VIDEOS = 20
+
+private fun shuffleIntervalLabel(minutes: Int): String = when (minutes) {
+    0 -> "Off"
+    60 -> "1 hour"
+    else -> "$minutes min"
+}
 
 @Composable
 fun WallpaperPickerScreen(
@@ -59,26 +68,6 @@ fun WallpaperPickerScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-
-    // Reading local videos needs a runtime grant, not just the manifest declaration - without
-    // this the MediaStore query in the ViewModel silently returns zero rows forever, which looks
-    // identical to "no videos on this device" and was going unnoticed for exactly that reason.
-    val videoPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_VIDEO
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-    var hasVideoPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, videoPermission) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-    val requestVideoPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasVideoPermission = granted
-        if (granted) viewModel.loadLocalVideos()
-    }
 
     // The system's own crop-and-set flow does the actual WallpaperManager.setBitmap/setStream
     // call on success (cropping UI, permission handling, static-wallpaper persistence all live
@@ -97,6 +86,13 @@ fun WallpaperPickerScreen(
         }
     }
 
+    // The system Photo Picker needs no runtime permission at all (it grants access only to what
+    // the user taps), shows real thumbnails, and supports multi-select natively - all three
+    // things the old in-app MediaStore-query grid couldn't do without a lot more code.
+    val pickVideosLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTABLE_VIDEOS)
+    ) { uris -> viewModel.addSelectedVideos(uris) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -110,7 +106,11 @@ fun WallpaperPickerScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
             ListItem(
                 headlineContent = { Text("Choose photo") },
                 supportingContent = { Text("Pick a picture from your gallery") },
@@ -123,75 +123,74 @@ fun WallpaperPickerScreen(
             )
             HorizontalDivider()
 
-            ListItem(headlineContent = { Text("Live video wallpaper", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) })
             ListItem(
-                headlineContent = { Text("Mute audio") },
-                trailingContent = {
-                    Switch(checked = state.preferences.muted, onCheckedChange = viewModel::setMuted)
+                headlineContent = {
+                    Text(
+                        "Live video wallpaper",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             )
             ListItem(
-                headlineContent = { Text("Loop playback") },
-                trailingContent = {
-                    Switch(checked = state.preferences.loop, onCheckedChange = viewModel::setLoop)
+                headlineContent = { Text("Choose videos") },
+                supportingContent = { Text("Pick one or more from your gallery - selecting several lets you shuffle between them") },
+                leadingContent = { Icon(Icons.Filled.VideoLibrary, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    pickVideosLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                    )
                 }
             )
 
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                enabled = state.preferences.selectedMediaUri != null,
-                onClick = { context.startActivity(viewModel.buildActivateWallpaperIntent()) }
-            ) {
-                Text("Set as home screen wallpaper")
-            }
+            if (state.preferences.selectedMediaUris.isNotEmpty()) {
+                SelectedVideosRow(
+                    uris = state.preferences.selectedMediaUris,
+                    thumbnails = state.thumbnails,
+                    onRemove = viewModel::removeSelectedVideo
+                )
 
-            when {
-                !hasVideoPermission -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            "Allow access to your videos to pick one as a live wallpaper",
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Button(
-                            modifier = Modifier.padding(top = 12.dp),
-                            onClick = { requestVideoPermissionLauncher.launch(videoPermission) }
-                        ) {
-                            Text("Allow access")
-                        }
+                ListItem(
+                    headlineContent = { Text("Mute audio") },
+                    trailingContent = {
+                        Switch(checked = state.preferences.muted, onCheckedChange = viewModel::setMuted)
                     }
-                }
-                state.isLoading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                )
+                ListItem(
+                    headlineContent = { Text("Loop playback") },
+                    trailingContent = {
+                        Switch(checked = state.preferences.loop, onCheckedChange = viewModel::setLoop)
                     }
-                }
-                state.availableVideos.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No videos found on this device", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                else -> {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(12.dp)
-                    ) {
-                        items(state.availableVideos, key = { it.uri.toString() }) { entry ->
-                            VideoThumbnailCell(
-                                entry = entry,
-                                isSelected = entry.uri.toString() == state.preferences.selectedMediaUri,
-                                onClick = { viewModel.selectMedia(entry.uri) }
+                )
+
+                if (state.preferences.selectedMediaUris.size > 1) {
+                    val currentIndex = SHUFFLE_INTERVAL_PRESETS_MINUTES
+                        .indexOf(state.preferences.shuffleIntervalMinutes)
+                        .coerceAtLeast(0)
+                    ListItem(
+                        headlineContent = {
+                            Text("Shuffle every (${shuffleIntervalLabel(state.preferences.shuffleIntervalMinutes)})")
+                        },
+                        supportingContent = {
+                            Slider(
+                                value = currentIndex.toFloat(),
+                                valueRange = 0f..(SHUFFLE_INTERVAL_PRESETS_MINUTES.size - 1).toFloat(),
+                                steps = SHUFFLE_INTERVAL_PRESETS_MINUTES.size - 2,
+                                onValueChange = {
+                                    viewModel.setShuffleIntervalMinutes(SHUFFLE_INTERVAL_PRESETS_MINUTES[it.roundToInt()])
+                                }
                             )
                         }
-                    }
+                    )
+                }
+
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    onClick = { context.startActivity(viewModel.buildActivateWallpaperIntent()) }
+                ) {
+                    Text("Set as home screen wallpaper")
                 }
             }
         }
@@ -199,37 +198,63 @@ fun WallpaperPickerScreen(
 }
 
 @Composable
-private fun VideoThumbnailCell(
-    entry: WallpaperMediaEntry,
-    isSelected: Boolean,
-    onClick: () -> Unit
+private fun SelectedVideosRow(
+    uris: Set<String>,
+    thumbnails: Map<String, android.graphics.Bitmap?>,
+    onRemove: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .padding(8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-            .clickable(onClick = onClick)
-            .padding(12.dp)
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
     ) {
+        items(uris.toList(), key = { it }) { uriString ->
+            VideoThumbnailCell(
+                thumbnail = thumbnails[uriString],
+                isThumbnailLoading = !thumbnails.containsKey(uriString),
+                onRemove = { onRemove(uriString) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoThumbnailCell(
+    thumbnail: android.graphics.Bitmap?,
+    isThumbnailLoading: Boolean,
+    onRemove: () -> Unit
+) {
+    Box(modifier = Modifier.padding(4.dp).size(88.dp)) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+            when {
+                thumbnail != null -> Image(
+                    bitmap = thumbnail.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                isThumbnailLoading -> CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                else -> Icon(Icons.Filled.VideoLibrary, contentDescription = null)
+            }
         }
-        Text(
-            text = entry.displayName,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 6.dp)
-        )
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .size(22.dp)
+                .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+        ) {
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Remove",
+                tint = Color.White,
+                modifier = Modifier.size(14.dp)
+            )
+        }
     }
 }
