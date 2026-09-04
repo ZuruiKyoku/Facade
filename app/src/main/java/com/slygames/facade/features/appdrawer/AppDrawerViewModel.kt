@@ -29,6 +29,16 @@ data class AppDrawerUiState(
     val sectionIndex: List<Char> by lazy {
         filteredApps.map { it.label.firstOrNull()?.uppercaseChar() ?: '#' }.distinct()
     }
+
+    /** First item position (within [filteredApps]) for each letter in [sectionIndex] - lets the fast-scroll rail jump straight to a section instead of just labeling one. */
+    val sectionStartIndex: Map<Char, Int> by lazy {
+        val positions = LinkedHashMap<Char, Int>()
+        filteredApps.forEachIndexed { index, app ->
+            val letter = app.label.firstOrNull()?.uppercaseChar() ?: '#'
+            positions.getOrPut(letter) { index }
+        }
+        positions
+    }
 }
 
 @HiltViewModel

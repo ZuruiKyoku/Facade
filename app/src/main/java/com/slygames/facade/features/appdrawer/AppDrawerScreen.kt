@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
@@ -18,12 +19,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -35,8 +38,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -44,9 +50,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -177,6 +186,11 @@ fun AppDrawerScreen(
 
         FastScrollIndex(
             letters = uiState.sectionIndex,
+            onLetterSelected = { letter ->
+                uiState.sectionStartIndex[letter]?.let { index ->
+                    coroutineScope.launch { gridState.animateScrollToItem(index) }
+                }
+            },
             modifier = Modifier
                 .fillMaxHeight()
                 .width(24.dp)
@@ -216,22 +230,86 @@ private fun AppDrawerCell(
     }
 }
 
-/** Alphabet rail on the right edge of the drawer for jump-scrolling by section letter. */
+/**
+ * Alphabet rail on the right edge of the drawer for jump-scrolling by
+ * section letter: tap a letter, or drag anywhere along the rail, to
+ * animate-scroll the grid to that section - same interaction as a
+ * contacts-app A-Z index. [onLetterSelected] fires on initial touch-down
+ * and again each time the touch crosses into a new letter's band while
+ * dragging, not continuously, so it doesn't spam redundant scroll calls.
+ */
 @Composable
-private fun FastScrollIndex(letters: List<Char>, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.SpaceEvenly,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        letters.forEach { letter ->
-            Text(
-                text = letter.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Unspecified
-            )
+private fun FastScrollIndex(
+    letters: List<Char>,
+    onLetterSelected: (Char) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var activeLetter by remember { mutableStateOf<Char?>(null) }
+    var activeLetterY by remember { mutableStateOf(0.dp) }
+    var railHeightPx by remember { mutableFloatStateOf(0f) }
+
+    fun letterForY(yPx: Float): Char? {
+        if (letters.isEmpty() || railHeightPx <= 0f) return null
+        val fraction = (yPx / railHeightPx).coerceIn(0f, 0.999f)
+        return letters[(fraction * letters.size).toInt()]
+    }
+
+    Box {
+        Column(
+            modifier = modifier
+                .onSizeChanged { railHeightPx = it.height.toFloat() }
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                .padding(vertical = 8.dp)
+                .pointerInput(letters) {
+                    awaitEachGesture {
+                        do {
+                            // The loop's first iteration picks up the initial press itself, so
+                            // there's no separate awaitFirstDown() step - tap and drag are
+                            // handled identically, just as one iteration vs. several.
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.pressed } ?: break
+                            change.consume()
+                            letterForY(change.position.y)?.let { letter ->
+                                activeLetterY = change.position.y.toDp()
+                                if (letter != activeLetter) {
+                                    activeLetter = letter
+                                    onLetterSelected(letter)
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
+                        activeLetter = null
+                    }
+                },
+            verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            letters.forEach { letter ->
+                val isActive = letter == activeLetter
+                Text(
+                    text = letter.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isActive) MaterialTheme.colorScheme.primary else Color.Unspecified
+                )
+            }
+        }
+
+        // Large callout bubble tracking the touch, so the picked letter is readable without the
+        // finger obscuring the (much smaller) rail text it's currently over.
+        activeLetter?.let { letter ->
+            Box(
+                modifier = Modifier
+                    .offset(x = (-64).dp, y = activeLetterY - 28.dp)
+                    .size(56.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = letter.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     }
 }
