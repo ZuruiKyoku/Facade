@@ -1,10 +1,23 @@
 package com.slygames.facade.services.shizuku
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.ServiceConnection
+import android.os.IBinder
+import android.os.RemoteException
+import com.slygames.facade.BuildConfig
 import com.slygames.facade.core.permission.PermissionState
 import com.slygames.facade.core.permission.ShizukuPermissionHandler
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,25 +46,51 @@ data class ShizukuCommandResult(
  * command execution surface for the Elevated System Tweak Bridge (UI Tuner
  * toggles, `WRITE_SECURE_SETTINGS`-gated settings, animation scales).
  *
- * Command execution against the elevated shell requires binding a Shizuku
- * *user service* (a small AIDL-backed helper process Shizuku launches with
- * shell/ADB privileges) rather than calling into the daemon directly -
- * [executeCommand] is therefore a documented stub other modules can build
- * against; wiring a concrete `IShizukuUserService` implementation is the
- * next step once a specific tweak (e.g. `settings put global
- * window_animation_scale`) is being wired end-to-end.
+ * [executeCommand] binds a Shizuku *user service* ([UserService], hosted by
+ * [IUserService]) - a small AIDL-backed helper process Shizuku launches
+ * with shell/ADB privileges - the first time it's needed, and reuses that
+ * binding for subsequent commands until [dispose] tears it down.
  */
 @Singleton
 class ShizukuManager @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val permissionHandler: ShizukuPermissionHandler
 ) {
     private val _connectionState = MutableStateFlow(ShizukuConnectionState.UNAVAILABLE)
     val connectionState: StateFlow<ShizukuConnectionState> = _connectionState.asStateFlow()
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener { refreshState() }
-    private val binderDeadListener = Shizuku.OnBinderDeadListener { refreshState() }
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        userService = null
+        refreshState()
+    }
     private val permissionResultListener =
         Shizuku.OnRequestPermissionResultListener { _, _ -> refreshState() }
+
+    private val userServiceArgs = Shizuku.UserServiceArgs(
+        ComponentName(context.packageName, UserService::class.java.name)
+    )
+        .daemon(false)
+        .processNameSuffix("shizuku_tweaks")
+        .debuggable(BuildConfig.DEBUG)
+        .version(BuildConfig.VERSION_CODE)
+
+    private val bindLock = Mutex()
+    private var userService: IUserService? = null
+    private var pendingBind: CompletableDeferred<IUserService?>? = null
+
+    private val userServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+            val service = if (binder.isBinderAlive) IUserService.Stub.asInterface(binder) else null
+            userService = service
+            pendingBind?.complete(service)
+            pendingBind = null
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            userService = null
+        }
+    }
 
     init {
         // Sticky: fires immediately with the current state if the binder is already alive,
@@ -76,11 +115,11 @@ class ShizukuManager @Inject constructor(
     }
 
     /**
-     * Executes [command] with Shizuku's elevated privileges once a user
-     * service is bound. Until that binding is wired up, this reports a
-     * clear "not yet implemented" failure instead of silently no-op'ing, so
-     * callers building system-tweak UI on top of it fail loudly in debug
-     * builds rather than believing a toggle took effect.
+     * Executes [command] with Shizuku's elevated privileges, binding
+     * [UserService] on first use. Fails loudly (a non-zero [ShizukuCommandResult.exitCode]
+     * with a [ShizukuCommandResult.stderr] explanation) rather than silently no-op'ing if
+     * Shizuku isn't connected or the bind times out, so callers can't mistake a no-op for
+     * a toggle having taken effect.
      */
     suspend fun executeCommand(command: String): ShizukuCommandResult {
         if (_connectionState.value != ShizukuConnectionState.READY) {
@@ -89,23 +128,56 @@ class ShizukuManager @Inject constructor(
                 stderr = "Shizuku is not connected (state=${_connectionState.value})"
             )
         }
-        // TODO: bind an IShizukuUserService (Shizuku.bindUserService) that shells out to
-        // `command` in a privileged process and relay its stdout/stderr/exit code back here.
-        return ShizukuCommandResult(
-            exitCode = ERROR_NOT_IMPLEMENTED,
-            stderr = "Elevated command execution requires a bound Shizuku user service (not yet wired)."
+        val service = obtainUserService() ?: return ShizukuCommandResult(
+            exitCode = ERROR_BIND_FAILED,
+            stderr = "Timed out binding the Shizuku user service."
         )
+        return try {
+            withContext(Dispatchers.IO) { ShizukuExecCodec.decode(service.exec(command)) }
+        } catch (e: RemoteException) {
+            userService = null
+            ShizukuCommandResult(
+                exitCode = ERROR_REMOTE_EXCEPTION,
+                stderr = e.message ?: "The Shizuku user service died mid-call."
+            )
+        }
+    }
+
+    private suspend fun obtainUserService(): IUserService? {
+        userService?.let { return it }
+        return bindLock.withLock {
+            userService?.let { return@withLock it }
+            val deferred = CompletableDeferred<IUserService?>()
+            pendingBind = deferred
+            try {
+                Shizuku.bindUserService(userServiceArgs, userServiceConnection)
+            } catch (_: Throwable) {
+                pendingBind = null
+                return@withLock null
+            }
+            withTimeoutOrNull(BIND_TIMEOUT_MS) { deferred.await() }
+        }
     }
 
     fun dispose() {
         Shizuku.removeBinderReceivedListener(binderReceivedListener)
         Shizuku.removeBinderDeadListener(binderDeadListener)
         Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        if (userService != null) {
+            try {
+                Shizuku.unbindUserService(userServiceArgs, userServiceConnection, true)
+            } catch (_: Throwable) {
+                // Best-effort: the daemon may already be gone.
+            }
+        }
+        userService = null
     }
 
     companion object {
         const val DEFAULT_PERMISSION_REQUEST_CODE = 5721
+        private const val BIND_TIMEOUT_MS = 5_000L
         private const val ERROR_NOT_READY = -1
-        private const val ERROR_NOT_IMPLEMENTED = -2
+        private const val ERROR_BIND_FAILED = -2
+        private const val ERROR_REMOTE_EXCEPTION = -4
     }
 }
