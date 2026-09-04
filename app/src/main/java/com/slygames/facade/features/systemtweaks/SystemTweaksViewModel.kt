@@ -1,5 +1,7 @@
 package com.slygames.facade.features.systemtweaks
 
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slygames.facade.services.shizuku.ShizukuCommandResult
@@ -43,6 +45,15 @@ class SystemTweaksViewModel @Inject constructor(
 
     fun requestPermission() = shizukuManager.requestPermission()
 
+    /** Opens Shizuku's Play Store listing - the "built-in way to install it" Facade can offer;
+     * actually *starting* the daemon still requires the user to follow Shizuku's own ADB/root
+     * flow, since that's what makes it trustworthy (no app can grant itself shell privileges). */
+    fun buildInstallShizukuIntent(): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$SHIZUKU_PACKAGE"))
+
+    fun buildShizukuSetupGuideIntent(): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/"))
+
     fun setAnimationScale(scale: AnimationScale) {
         viewModelScope.launch {
             val results = listOf(
@@ -61,5 +72,9 @@ class SystemTweaksViewModel @Inject constructor(
             val value = if (enabled) "1" else "0"
             _lastResult.value = shizukuManager.executeCommand("settings put secure sysui_demo_allowed $value")
         }
+    }
+
+    private companion object {
+        const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
     }
 }

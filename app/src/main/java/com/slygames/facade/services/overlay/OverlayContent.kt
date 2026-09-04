@@ -6,16 +6,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 /**
  * Placeholder Compose content for each [OverlaySurface] window. These are
@@ -37,18 +40,30 @@ fun StatusBarOverlayContent(clockText: String) {
 
 @Composable
 fun VolumeHudOverlayContent(level: Float) {
+    val clamped = level.coerceIn(0f, 1f)
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(20.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp)) {
-            Icon(Icons.Filled.VolumeUp, contentDescription = null)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(
+                if (clamped <= 0f) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                contentDescription = null
+            )
             LinearProgressIndicator(
-                progress = { level.coerceIn(0f, 1f) },
+                progress = { clamped },
                 modifier = Modifier
                     .padding(start = 12.dp)
                     .size(width = 120.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
+            )
+            Text(
+                text = "${(clamped * 100).roundToInt()}%",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(start = 12.dp)
             )
         }
     }

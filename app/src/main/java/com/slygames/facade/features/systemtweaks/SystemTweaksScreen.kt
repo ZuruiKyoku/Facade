@@ -1,6 +1,8 @@
 package com.slygames.facade.features.systemtweaks
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,6 +11,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -20,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,6 +39,7 @@ fun SystemTweaksScreen(
     viewModel: SystemTweaksViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -68,6 +73,26 @@ fun SystemTweaksScreen(
                     }
                 }
             )
+            if (state.connectionState == ShizukuConnectionState.UNAVAILABLE) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Button(onClick = { context.startActivity(viewModel.buildInstallShizukuIntent()) }) {
+                        Text("Get Shizuku")
+                    }
+                    OutlinedButton(onClick = { context.startActivity(viewModel.buildShizukuSetupGuideIntent()) }) {
+                        Text("Setup guide")
+                    }
+                }
+                Text(
+                    text = "Shizuku itself has to be started via ADB or root - no app, Facade " +
+                        "included, can grant itself shell privileges. The setup guide walks " +
+                        "through both.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
 
             val tweaksEnabled = state.connectionState == ShizukuConnectionState.READY
 
