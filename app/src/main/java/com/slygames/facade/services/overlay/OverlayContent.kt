@@ -2,8 +2,11 @@ package com.slygames.facade.services.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -32,7 +35,11 @@ import kotlin.math.roundToInt
 fun StatusBarOverlayContent(clockText: String) {
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
+        shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
+        // The window itself is left-aligned (see OverlayWindowController), but that alone isn't
+        // enough on every device - a punch-hole/notch camera isn't always centered, so this
+        // nudges clear of wherever this specific device's cutout actually is.
+        modifier = Modifier.windowInsetsPadding(WindowInsets.displayCutout)
     ) {
         Text(text = clockText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
     }

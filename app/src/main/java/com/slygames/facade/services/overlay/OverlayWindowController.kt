@@ -75,7 +75,12 @@ class OverlayWindowController(private val serviceContext: Context) {
 
     private fun layoutParamsFor(surface: OverlaySurface): WindowManager.LayoutParams {
         val (gravity, height) = when (surface) {
-            OverlaySurface.STATUS_BAR -> Gravity.TOP to WindowManager.LayoutParams.WRAP_CONTENT
+            // START, not a bare TOP (which WindowManager centers horizontally by default): a
+            // centered clock sits directly under a center-mounted punch-hole camera on many
+            // phones. START matches where stock Android draws its own status bar clock, which
+            // is also displayCutout-aware content's fallback-safe corner on every device shape
+            // Facade has seen (front cameras cluster center or right, essentially never far-left).
+            OverlaySurface.STATUS_BAR -> (Gravity.TOP or Gravity.START) to WindowManager.LayoutParams.WRAP_CONTENT
             OverlaySurface.VOLUME_HUD -> Gravity.CENTER to WindowManager.LayoutParams.WRAP_CONTENT
             OverlaySurface.FLOATING_HUD -> (Gravity.TOP or Gravity.END) to WindowManager.LayoutParams.WRAP_CONTENT
         }
