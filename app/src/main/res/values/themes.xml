@@ -15,11 +15,18 @@
         <item name="android:colorBackground">@color/facade_light_background</item>
     </style>
 
-    <!-- The HOME activity draws edge-to-edge behind system bars and hides the action bar entirely. -->
+    <!--
+      The HOME activity draws edge-to-edge behind system bars, hides the
+      action bar entirely, and shows the device's actual system wallpaper
+      through a transparent window background - like any other launcher -
+      instead of a flat theme color. The Compose workspace/dock only draw
+      their own icons/surfaces on top of it.
+    -->
     <style name="Theme.Facade.Launcher" parent="Theme.Facade">
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowBackground">@color/facade_light_background</item>
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 </resources>
