@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,8 +20,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -138,6 +142,19 @@ private fun FolderSheet(
 ) {
     val context = LocalContext.current
     var name by remember(folder.id) { mutableStateOf(folder.name) }
+    // Captured once per folder.id (not re-evaluated as `name` changes while typing) so a
+    // brand-new, still-nameless folder gets the keyboard focused automatically - the only way
+    // to name one is right here, there's no separate "rename" entry point for a fresh folder.
+    val isNewFolder = remember(folder.id) { folder.name.isEmpty() }
+    val focusRequester = remember(folder.id) { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(folder.id) {
+        if (isNewFolder) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -148,6 +165,8 @@ private fun FolderSheet(
                     name = it
                     onRename(it)
                 },
+                modifier = Modifier.focusRequester(focusRequester),
+                label = { Text("Folder name") },
                 singleLine = true
             )
         },

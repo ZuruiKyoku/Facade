@@ -98,6 +98,18 @@ class WorkspaceViewModel @Inject constructor(
             )
             workspaceRepository.addItemToFolder(targetItem.id, folderId, rank = 0)
             workspaceRepository.addItemToFolder(draggedItemId, folderId, rank = 1)
+            // Prompt for a name right away instead of leaving a nameless folder the user has to
+            // remember to open and rename later - this is the only way to name a new folder.
+            openFolder(
+                WorkspaceItem.Folder(
+                    id = folderId,
+                    screenPage = targetItem.screenPage,
+                    cellX = targetItem.cellX,
+                    cellY = targetItem.cellY,
+                    name = "",
+                    items = emptyList()
+                )
+            )
         }
     }
 
