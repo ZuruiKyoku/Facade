@@ -254,9 +254,15 @@ private fun FastScrollIndex(
         return letters[(fraction * letters.size).toInt()]
     }
 
-    Box {
+    // The outer Box is given the caller's fixed size explicitly (rather than the inner Column)
+    // so it never wraps to fit the callout bubble below - that bubble deliberately renders
+    // outside these bounds via a negative offset, and without a size pinned here Box would
+    // otherwise size itself to include it, growing wider the moment a letter goes active and
+    // shoving the rail (and the grid next to it, in the parent Row) sideways to make room.
+    Box(modifier = modifier) {
         Column(
-            modifier = modifier
+            modifier = Modifier
+                .fillMaxSize()
                 .onSizeChanged { railHeightPx = it.height.toFloat() }
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                 .padding(vertical = 8.dp)
