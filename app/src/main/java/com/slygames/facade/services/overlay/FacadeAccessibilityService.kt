@@ -44,7 +44,11 @@ class FacadeAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        overlayController = OverlayWindowController(applicationContext)
+        // TYPE_ACCESSIBILITY_OVERLAY windows must be added through the AccessibilityService's
+        // own Context, not the plain applicationContext - only the service instance carries
+        // the special window token that type needs; applicationContext's WindowManager throws
+        // WindowManager.BadTokenException ("token null is not valid") on addView.
+        overlayController = OverlayWindowController(this)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         // Belt-and-suspenders: android:accessibilityFlags="flagRequestFilterKeyEvents" in
         // accessibility_service_config.xml should be enough on its own, but some OEM builds

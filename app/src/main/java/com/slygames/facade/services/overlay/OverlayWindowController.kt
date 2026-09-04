@@ -26,7 +26,10 @@ enum class OverlaySurface { STATUS_BAR, VOLUME_HUD, FLOATING_HUD }
  * windows hosting Compose content on behalf of [FacadeAccessibilityService].
  * This layout type is only usable from an active [android.accessibilityservice.AccessibilityService]
  * (unlike `TYPE_APPLICATION_OVERLAY`, it needs no separate `SYSTEM_ALERT_WINDOW`
- * grant beyond the accessibility service itself being enabled).
+ * grant beyond the accessibility service itself being enabled) - [serviceContext] must be the
+ * service instance itself (`this`), not `applicationContext`, since only the service's own
+ * Context carries the window token this layout type requires; `applicationContext`'s
+ * WindowManager throws `BadTokenException` on `addView`.
  */
 class OverlayWindowController(private val serviceContext: Context) {
 
