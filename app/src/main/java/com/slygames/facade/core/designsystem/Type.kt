@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.sp
 
 private val FacadeFontFamily = FontFamily.SansSerif
 
-/** Material3 type scale used across the app drawer, dock, and settings surfaces. */
+/** Material3 type scale used across Facade's settings surfaces. */
 val FacadeTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = FacadeFontFamily,
@@ -66,12 +66,4 @@ val FacadeTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp
     )
-)
-
-/** Dedicated style for workspace icon labels rendered under the custom grid, outside Compose. */
-val WorkspaceIconLabelStyle = TextStyle(
-    fontFamily = FacadeFontFamily,
-    fontWeight = FontWeight.Medium,
-    fontSize = 12.sp,
-    lineHeight = 14.sp
 )

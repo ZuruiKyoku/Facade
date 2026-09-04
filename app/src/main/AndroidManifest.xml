@@ -2,12 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ============ Launcher-role permissions ============ -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -29,10 +24,6 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
-    <!-- Declares that this app can act as the default HOME app -->
-    <uses-feature
-        android:name="android.software.home_screen"
-        android:required="true" />
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />
@@ -54,24 +45,18 @@
         tools:targetApi="35">
 
         <!-- ============================================================ -->
-        <!-- Primary HOME activity                                        -->
+        <!-- Primary activity                                             -->
         <!-- ============================================================ -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:stateNotNeeded="true"
             android:screenOrientation="unspecified"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|screenLayout|smallestScreenSize|navigation|uiMode"
             android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.Facade.Launcher">
+            android:theme="@style/Theme.Facade">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.MONKEY" />
             </intent-filter>
         </activity>
 
@@ -108,30 +93,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
-
-        <!-- ============================================================ -->
-        <!-- Dynamic package monitoring                                   -->
-        <!-- ============================================================ -->
-        <receiver
-            android:name=".services.launcher.PackageChangeReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.PACKAGE_ADDED" />
-                <action android:name="android.intent.action.PACKAGE_REMOVED" />
-                <action android:name="android.intent.action.PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.PACKAGE_CHANGED" />
-                <data android:scheme="package" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".services.launcher.BootCompletedReceiver"
-            android:exported="true"
-            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
 
         <!-- ============================================================ -->
         <!-- Elevated System Tweak Bridge (Shizuku)                       -->

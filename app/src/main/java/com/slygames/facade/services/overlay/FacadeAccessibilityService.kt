@@ -4,7 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.text.format.DateFormat
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
-import com.slygames.facade.data.local.datastore.LauncherPreferencesRepository
+import com.slygames.facade.data.local.datastore.AppPreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +27,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class FacadeAccessibilityService : AccessibilityService() {
 
-    @Inject lateinit var preferencesRepository: LauncherPreferencesRepository
+    @Inject lateinit var preferencesRepository: AppPreferencesRepository
 
     private lateinit var overlayController: OverlayWindowController
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

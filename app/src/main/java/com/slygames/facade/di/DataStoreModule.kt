@@ -12,21 +12,21 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
-/** [LauncherPreferences][com.slygames.facade.data.local.datastore.LauncherPreferences] store: grid size, icon scale, gestures. */
+/** [AppPreferences][com.slygames.facade.data.local.datastore.AppPreferences] store: theming and overlay toggles. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class LauncherDataStore
+annotation class AppDataStore
 
 /** [WallpaperPreferences][com.slygames.facade.data.local.datastore.WallpaperPreferences] store: selected live-wallpaper media. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class WallpaperDataStore
 
-private const val LAUNCHER_PREFERENCES_NAME = "launcher_preferences"
+private const val APP_PREFERENCES_NAME = "launcher_preferences"
 private const val WALLPAPER_PREFERENCES_NAME = "wallpaper_preferences"
 
-private val Context.launcherPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
-    name = LAUNCHER_PREFERENCES_NAME
+private val Context.appPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = APP_PREFERENCES_NAME
 )
 
 private val Context.wallpaperPreferencesDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -39,9 +39,9 @@ object DataStoreModule {
 
     @Provides
     @Singleton
-    @LauncherDataStore
-    fun provideLauncherPreferencesDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
-        context.launcherPreferencesDataStore
+    @AppDataStore
+    fun provideAppPreferencesDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+        context.appPreferencesDataStore
 
     @Provides
     @Singleton

@@ -10,7 +10,6 @@ enum class PermissionState {
 
 /** A permission Facade needs, surfaced together in the onboarding flow and Settings. */
 enum class FacadePermission {
-    DEFAULT_LAUNCHER,
     SYSTEM_ALERT_WINDOW,
     ACCESSIBILITY_SERVICE,
     SHIZUKU

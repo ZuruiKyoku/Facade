@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.slygames.facade.core.permission.AccessibilityPermissionHandler
 import com.slygames.facade.core.permission.OverlayPermissionHandler
 import com.slygames.facade.core.permission.PermissionState
-import com.slygames.facade.data.local.datastore.LauncherPreferences
-import com.slygames.facade.data.local.datastore.LauncherPreferencesRepository
+import com.slygames.facade.data.local.datastore.AppPreferences
+import com.slygames.facade.data.local.datastore.AppPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class OverlaySettingsUiState(
-    val preferences: LauncherPreferences = LauncherPreferences(),
+    val preferences: AppPreferences = AppPreferences(),
     val overlayPermissionState: PermissionState = PermissionState.DENIED,
     val accessibilityServiceState: PermissionState = PermissionState.DENIED
 ) {
@@ -29,7 +29,7 @@ data class OverlaySettingsUiState(
 
 @HiltViewModel
 class OverlaySettingsViewModel @Inject constructor(
-    private val preferencesRepository: LauncherPreferencesRepository,
+    private val preferencesRepository: AppPreferencesRepository,
     private val overlayPermissionHandler: OverlayPermissionHandler,
     private val accessibilityPermissionHandler: AccessibilityPermissionHandler
 ) : ViewModel() {

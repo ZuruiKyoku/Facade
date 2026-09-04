@@ -2,8 +2,8 @@ package com.slygames.facade.features.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.slygames.facade.data.local.datastore.LauncherPreferences
-import com.slygames.facade.data.local.datastore.LauncherPreferencesRepository
+import com.slygames.facade.data.local.datastore.AppPreferences
+import com.slygames.facade.data.local.datastore.AppPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -13,33 +13,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val preferencesRepository: LauncherPreferencesRepository
+    private val preferencesRepository: AppPreferencesRepository
 ) : ViewModel() {
 
-    val preferences: StateFlow<LauncherPreferences> = preferencesRepository.preferencesFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LauncherPreferences())
-
-    fun setGridSize(columns: Int, rows: Int) = viewModelScope.launch {
-        preferencesRepository.setGridSize(columns, rows)
-    }
-
-    fun setIconScale(scale: Float) = viewModelScope.launch {
-        preferencesRepository.setIconScale(scale)
-    }
-
-    fun setAppDrawerIconScale(scale: Float) = viewModelScope.launch {
-        preferencesRepository.setAppDrawerIconScale(scale)
-    }
-
-    fun setShowIconLabels(show: Boolean) = viewModelScope.launch {
-        preferencesRepository.setShowIconLabels(show)
-    }
+    val preferences: StateFlow<AppPreferences> = preferencesRepository.preferencesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppPreferences())
 
     fun setDynamicColorEnabled(enabled: Boolean) = viewModelScope.launch {
         preferencesRepository.setDynamicColorEnabled(enabled)
-    }
-
-    fun setInfiniteScrollEnabled(enabled: Boolean) = viewModelScope.launch {
-        preferencesRepository.setInfiniteScrollEnabled(enabled)
     }
 }
