@@ -55,6 +55,10 @@ interface WorkspaceDao {
     @Query("SELECT * FROM workspace_items WHERE containerId = :folderId ORDER BY cellX ASC")
     fun observeFolderContents(folderId: Long): Flow<List<WorkspaceItemEntity>>
 
+    /** Every item living inside ANY folder, across the whole workspace - used to build each closed folder's mini-icon preview without a per-folder query. */
+    @Query("SELECT * FROM workspace_items WHERE containerId IS NOT NULL ORDER BY containerId ASC, cellX ASC")
+    fun observeAllContainedItems(): Flow<List<WorkspaceItemEntity>>
+
     @Query("SELECT DISTINCT screenPage FROM workspace_items WHERE isDockItem = 0 AND containerId IS NULL ORDER BY screenPage ASC")
     suspend fun getUsedPageIndices(): List<Int>
 

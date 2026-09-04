@@ -34,10 +34,16 @@ class WorkspaceRepository @Inject constructor(
     private val appWidgetManager: AppWidgetManager by lazy { AppWidgetManager.getInstance(context) }
 
     fun observeDesktopPages(): Flow<List<WorkspacePage>> =
-        combine(workspaceDao.observeDesktopItems(), appRepository.apps, folderDao.observeAll()) { entities, _, folders ->
+        combine(
+            workspaceDao.observeDesktopItems(),
+            appRepository.apps,
+            folderDao.observeAll(),
+            workspaceDao.observeAllContainedItems()
+        ) { entities, _, folders, containedItems ->
             val folderNames = folders.associate { it.id to it.name }
+            val previewsByFolder = containedItems.groupBy { it.containerId }
             entities
-                .mapNotNull { it.toDomainOrNull(folderNames) }
+                .mapNotNull { it.toDomainOrNull(folderNames, previewsByFolder) }
                 .groupBy { it.screenPage }
                 .toSortedMap()
                 .map { (page, items) -> WorkspacePage(page, items) }
@@ -186,7 +192,10 @@ class WorkspaceRepository @Inject constructor(
         workspaceDao.deleteFolderPlaceholder(folderId)
     }
 
-    private fun WorkspaceItemEntity.toDomainOrNull(folderNames: Map<Long, String> = emptyMap()): WorkspaceItem? = when (itemType) {
+    private fun WorkspaceItemEntity.toDomainOrNull(
+        folderNames: Map<Long, String> = emptyMap(),
+        previewsByFolder: Map<Long?, List<WorkspaceItemEntity>> = emptyMap()
+    ): WorkspaceItem? = when (itemType) {
         WorkspaceItemType.APP -> {
             val componentKey = "${packageName.orEmpty()}/${className.orEmpty()}"
             val appItem = appRepository.getByComponentKey(componentKey) ?: return null
@@ -221,17 +230,18 @@ class WorkspaceRepository @Inject constructor(
             WorkspaceItem.Widget(id, screenPage, cellX, cellY, spanX, spanY, widgetItem)
         }
         WorkspaceItemType.FOLDER -> {
-            // Folder contents are resolved on-demand via observeFolder(); the desktop-level
-            // placeholder only needs its own metadata (name resolved from FolderItemEntity,
-            // since the placeholder row itself carries no label).
+            // The full, live contents (for the open FolderSheet) are resolved on-demand via
+            // observeFolder(); here we only need enough to draw the closed-state preview icons,
+            // hydrated from previewsByFolder rather than a per-folder query.
             val resolvedFolderId = folderMetadataId ?: id
+            val previewItems = previewsByFolder[resolvedFolderId].orEmpty().mapNotNull { it.toDomainOrNull() }
             WorkspaceItem.Folder(
                 id = resolvedFolderId,
                 screenPage = screenPage,
                 cellX = cellX,
                 cellY = cellY,
                 name = folderNames[resolvedFolderId].orEmpty(),
-                items = emptyList()
+                items = previewItems
             )
         }
     }
