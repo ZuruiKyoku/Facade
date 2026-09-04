@@ -1,7 +1,10 @@
 package com.slygames.facade
 
+import android.os.Build
 import android.os.Bundle
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
@@ -31,20 +34,64 @@ import javax.inject.Inject
  * overlay/system-tweak screens - is a Compose destination reached via
  * [NavHost] from here rather than a separate Activity, so the process never
  * pays a second cold-start cost after the user is already home.
+ *
+ * Once Facade actually holds the HOME role, a plain/default-priority back
+ * callback (which is all [NavHost] registers on its own) never sees the
+ * system back button/gesture at all: Android treats it as a task-level
+ * "return to home" action and reacts to it before dispatch ever reaches an
+ * app-registered callback of normal priority - there is nothing "behind"
+ * the home task to return to at the OS's level, only [NavController]'s own
+ * in-app back stack knows about the app drawer/settings/etc. Registering
+ * our own callback at [OnBackInvokedDispatcher.PRIORITY_OVERLAY] (API 33+;
+ * the AndroidX-compat dispatcher on older devices, where this interception
+ * doesn't happen) intercepts ahead of that system handling instead of
+ * fighting it, and pops [navController] manually.
+ *
+ * (The other half of "back didn't close the app drawer": `WorkspaceGridView`
+ * fired its swipe-up callback once per qualifying touch-move sample instead
+ * of once per gesture, pushing several duplicate `app_drawer` back-stack
+ * entries per swipe - so a single back press just landed on the next
+ * duplicate instead of the workspace. Fixed at the source, with
+ * `launchSingleTop` here too as a second line of defense.)
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var widgetHostViewManager: FacadeAppWidgetHostViewManager
 
+    private var navController: NavHostController? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        registerBackCallback()
 
         setContent {
             FacadeTheme {
-                FacadeNavHost(widgetHostViewManager = widgetHostViewManager)
+                navController = rememberNavController()
+                FacadeNavHost(
+                    widgetHostViewManager = widgetHostViewManager,
+                    navController = navController!!
+                )
             }
+        }
+    }
+
+    private fun registerBackCallback() {
+        val popCurrentDestination = { navController?.popBackStack() }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY
+            ) { popCurrentDestination() }
+        } else {
+            onBackPressedDispatcher.addCallback(
+                this,
+                object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        popCurrentDestination()
+                    }
+                }
+            )
         }
     }
 }
@@ -68,7 +115,13 @@ private fun FacadeNavHost(
             WorkspaceScreen(
                 modifier = Modifier,
                 widgetHostViewManager = widgetHostViewManager,
-                onOpenAppDrawer = { navController.navigate(Routes.APP_DRAWER) }
+                onOpenAppDrawer = {
+                    // Defense in depth against WorkspaceGridView's swipe-up firing more than
+                    // once for a single gesture: launchSingleTop skips pushing a second
+                    // app_drawer entry (and the back-stack duplication that caused) if it's
+                    // already on top, rather than relying solely on that call site being fixed.
+                    navController.navigate(Routes.APP_DRAWER) { launchSingleTop = true }
+                }
             )
         }
         composable(

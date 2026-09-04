@@ -60,6 +60,8 @@ class WorkspaceGridView @JvmOverloads constructor(
     private var pressedChild: View? = null
     private var pressedItem: WorkspaceItem? = null
     private var longPressFired = false
+    /** True once [onSwipeUp]/[onSwipeDown] has fired for the current gesture, so a single swipe doesn't invoke it again on every later ACTION_MOVE sample past the threshold. */
+    private var verticalSwipeFired = false
 
     private val dragController = WorkspaceDragController(this)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -217,6 +219,7 @@ class WorkspaceGridView @JvmOverloads constructor(
                 lastX = ev.x
                 isPagingDrag = false
                 longPressFired = false
+                verticalSwipeFired = false
                 pressedChild = findChildUnder(ev.x, ev.y)
                 pressedItem = pressedChild?.let { child ->
                     (child.layoutParams as? WorkspaceLayoutParams)?.itemId?.let { itemLookup[it] }
@@ -259,7 +262,8 @@ class WorkspaceGridView @JvmOverloads constructor(
                 }
                 val dy = event.y - downY
                 val dx = event.x - downX
-                if (!isPagingDrag && abs(dy) > touchSlop && abs(dy) > abs(dx)) {
+                if (!isPagingDrag && !verticalSwipeFired && abs(dy) > touchSlop && abs(dy) > abs(dx)) {
+                    verticalSwipeFired = true
                     mainHandler.removeCallbacks(longPressRunnable)
                     if (dy < 0) onSwipeUp?.invoke() else onSwipeDown?.invoke()
                     return true
