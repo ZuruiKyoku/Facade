@@ -133,7 +133,8 @@ private fun FacadeNavHost(
             popExitTransition = { slideOutVertically(targetOffsetY = { fullHeight -> fullHeight }) + fadeOut() }
         ) {
             AppDrawerScreen(
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onDismiss = { navController.popBackStack() }
             )
         }
         composable(Routes.SETTINGS) {
