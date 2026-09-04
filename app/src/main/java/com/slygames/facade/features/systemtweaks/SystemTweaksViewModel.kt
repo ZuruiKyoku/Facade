@@ -54,6 +54,13 @@ class SystemTweaksViewModel @Inject constructor(
     fun buildShizukuSetupGuideIntent(): Intent =
         Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/"))
 
+    /** Play Store's per-device compatibility list lags behind brand-new phones - a device
+     * released after Shizuku's last Play Store update can show as "not compatible" there even
+     * though the app itself has no problem with it. Sideloading the same official release
+     * straight from GitHub skips that stale device check entirely. */
+    fun buildShizukuGithubReleasesIntent(): Intent =
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/RikkaApps/Shizuku/releases/latest"))
+
     fun setAnimationScale(scale: AnimationScale) {
         viewModelScope.launch {
             val results = listOf(

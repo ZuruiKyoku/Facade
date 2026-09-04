@@ -15,6 +15,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -92,6 +93,12 @@ fun SystemTweaksScreen(
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
+                TextButton(
+                    onClick = { context.startActivity(viewModel.buildShizukuGithubReleasesIntent()) },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Text("Play Store says it's not compatible with your device? Download it directly from GitHub instead")
+                }
             }
 
             val tweaksEnabled = state.connectionState == ShizukuConnectionState.READY
