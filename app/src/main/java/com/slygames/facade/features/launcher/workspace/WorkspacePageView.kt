@@ -94,8 +94,10 @@ class WorkspacePageView @JvmOverloads constructor(
 
     override fun generateDefaultLayoutParams(): LayoutParams = WorkspaceLayoutParams(0, 0, 0, 1, 1)
 
-    override fun generateLayoutParams(p: LayoutParams?): LayoutParams =
-        if (p is WorkspaceLayoutParams) p else WorkspaceLayoutParams(p ?: return generateDefaultLayoutParams())
+    override fun generateLayoutParams(p: LayoutParams?): LayoutParams {
+        if (p is WorkspaceLayoutParams) return p
+        return WorkspaceLayoutParams(p ?: return generateDefaultLayoutParams())
+    }
 
     override fun checkLayoutParams(p: LayoutParams?): Boolean = p is WorkspaceLayoutParams
 }

@@ -112,8 +112,6 @@ class WorkspaceGridView @JvmOverloads constructor(
         requestLayout()
     }
 
-    fun currentPageIndex(): Int = currentPage
-
     // ------------------------------------------------------------------
     // Measure / layout
     // ------------------------------------------------------------------

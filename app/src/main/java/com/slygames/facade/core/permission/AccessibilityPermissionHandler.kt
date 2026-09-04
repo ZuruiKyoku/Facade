@@ -5,6 +5,7 @@ import android.content.Intent
 import android.provider.Settings
 import android.text.TextUtils
 import com.slygames.facade.services.overlay.FacadeAccessibilityService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,7 +16,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class AccessibilityPermissionHandler @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
 
     fun currentState(): PermissionState =

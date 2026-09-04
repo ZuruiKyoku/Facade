@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,7 +18,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class DefaultLauncherPermissionHandler @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
 
     fun currentState(): PermissionState =

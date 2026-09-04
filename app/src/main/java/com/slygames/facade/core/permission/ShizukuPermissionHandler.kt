@@ -2,6 +2,7 @@ package com.slygames.facade.core.permission
 
 import android.content.Context
 import android.content.pm.PackageManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import rikka.shizuku.Shizuku
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -14,7 +15,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class ShizukuPermissionHandler @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
 
     /** True once the Shizuku manager app/service has started and its binder is alive. */

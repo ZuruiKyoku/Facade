@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,7 +15,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class OverlayPermissionHandler @Inject constructor(
-    private val context: Context
+    @ApplicationContext private val context: Context
 ) {
 
     fun currentState(): PermissionState =

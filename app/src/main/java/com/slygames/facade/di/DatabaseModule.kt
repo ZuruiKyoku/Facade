@@ -22,7 +22,7 @@ object DatabaseModule {
         Room.databaseBuilder(context, FacadeDatabase::class.java, FacadeDatabase.DATABASE_NAME)
             // Workspace layout is user data, not disposable cache - never destructively migrate
             // it. Real migrations should be added here as the schema evolves past v1.
-            .fallbackToDestructiveMigrationOnDowngrade(false)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
 
     @Provides

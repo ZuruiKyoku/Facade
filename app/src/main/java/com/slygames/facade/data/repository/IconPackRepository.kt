@@ -57,7 +57,8 @@ class IconPackRepository @Inject constructor(
             .distinct()
     }
 
-    suspend fun loadIconPack(packageName: String): IconPackInfo? = try {
+    suspend fun loadIconPack(packageName: String): IconPackInfo? {
+        return try {
         val resources = context.packageManager.getResourcesForApplication(packageName)
         val xmlResId = resources.getIdentifier("appfilter", "xml", packageName)
         if (xmlResId == 0) {
@@ -103,9 +104,10 @@ class IconPackRepository @Inject constructor(
             iconMaskName = maskName,
             iconScale = scale
         )
-    } catch (e: Exception) {
-        Log.w(TAG, "Failed to parse icon pack $packageName", e)
-        null
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse icon pack $packageName", e)
+            null
+        }
     }
 
     suspend fun setActivePack(packageName: String?) {
