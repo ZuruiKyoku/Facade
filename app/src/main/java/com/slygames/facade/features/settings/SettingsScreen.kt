@@ -135,8 +135,8 @@ fun SettingsScreen(
             item { SectionHeader(stringResource(R.string.settings_section_wallpaper)) }
             item {
                 ListItem(
-                    headlineContent = { Text("Live wallpaper") },
-                    supportingContent = { Text("Pick a looping video or animated background") },
+                    headlineContent = { Text("Wallpaper") },
+                    supportingContent = { Text("Set a photo, or a looping video background") },
                     modifier = Modifier.clickable(onClick = onNavigateToWallpaperPicker)
                 )
             }
