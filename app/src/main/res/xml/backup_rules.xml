@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Launcher layout + preferences are safe to back up; widget host state is not. -->
+    <include domain="sharedpref" path="." />
+    <include domain="database" path="facade_workspace.db" />
+    <exclude domain="database" path="facade_workspace.db-wal" />
+    <exclude domain="database" path="facade_workspace.db-shm" />
+</full-backup-content>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder thumbnail shown for FacadeWallpaperService in the system wallpaper picker. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+    <path
+        android:fillColor="#101014"
+        android:pathData="M0,0h256v256h-256z" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M0,128 L128,0 L256,128 L128,256 Z" />
+    <path
+        android:fillColor="#D0BCFF"
+        android:pathData="M94,70 H174 V98 H122 V118 H166 V146 H122 V186 H94 Z" />
+</vector>

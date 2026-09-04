@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Descriptor for FacadeWallpaperService. Android surfaces this metadata in
+  the system "Live Wallpapers" picker.
+-->
+<wallpaper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/wallpaper_description"
+    android:showMetadataInPreview="true"
+    android:thumbnail="@drawable/wallpaper_thumbnail" />

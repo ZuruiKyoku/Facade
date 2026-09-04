@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      Manifest-level theme. This only needs to satisfy the platform's window
+      background / status bar contract before Compose takes over inside
+      MainActivity; all real theming (Material3 color scheme, typography,
+      shapes) lives in core.designsystem.FacadeTheme.
+    -->
+    <style name="Theme.Facade" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="colorPrimary">@color/facade_light_primary</item>
+        <item name="colorOnPrimary">@color/facade_light_onPrimary</item>
+        <item name="android:colorBackground">@color/facade_light_background</item>
+    </style>
+
+    <!-- The HOME activity draws edge-to-edge behind system bars and hides the action bar entirely. -->
+    <style name="Theme.Facade.Launcher" parent="Theme.Facade">
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowBackground">@color/facade_light_background</item>
+    </style>
+</resources>
