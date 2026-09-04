@@ -118,35 +118,6 @@ class WorkspaceRepository @Inject constructor(
     suspend fun isCellOccupied(page: Int, cellX: Int, cellY: Int): Boolean =
         workspaceDao.countAtCell(page, cellX, cellY) > 0
 
-    /**
-     * First-run convenience: rather than land on a totally empty grid, fill
-     * page 0 with the first installed apps (already alphabetically sorted by
-     * [AppRepository]) the very first time the workspace has zero placed
-     * items. A no-op once anything has ever been placed, so it never fights
-     * a user who intentionally clears their layout - callers gate repeat
-     * attempts with [com.slygames.facade.data.local.datastore.LauncherPreferencesRepository].
-     */
-    suspend fun seedDefaultLayoutIfEmpty(apps: List<AppItem>, columns: Int, rows: Int) {
-        if (apps.isEmpty() || workspaceDao.countAll() > 0) return
-
-        val desktopApps = apps.take(columns * rows)
-        val desktopEntities = desktopApps.mapIndexed { index, app ->
-            app.toWorkspaceEntity(page = 0, cellX = index % columns, cellY = index / columns, isDock = false)
-        }
-        workspaceDao.insertAll(desktopEntities)
-    }
-
-    private fun AppItem.toWorkspaceEntity(page: Int, cellX: Int, cellY: Int, isDock: Boolean) = WorkspaceItemEntity(
-        itemType = WorkspaceItemType.APP,
-        packageName = packageName,
-        className = activityName,
-        label = label,
-        screenPage = page,
-        cellX = cellX,
-        cellY = cellY,
-        isDockItem = isDock
-    )
-
     suspend fun createFolder(name: String, page: Int, cellX: Int, cellY: Int): Long {
         val folderId = folderDao.insert(FolderItemEntity(name = name, screenPage = page, cellX = cellX, cellY = cellY))
         workspaceDao.insert(

@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -67,7 +71,14 @@ private fun FacadeNavHost(
                 onOpenAppDrawer = { navController.navigate(Routes.APP_DRAWER) }
             )
         }
-        composable(Routes.APP_DRAWER) {
+        composable(
+            Routes.APP_DRAWER,
+            // Mirrors the swipe-up gesture that opens it: slides up from the bottom on the way
+            // in, and back down on the way out (navigating forward from here, e.g. into
+            // Settings, keeps the default transition).
+            enterTransition = { slideInVertically(initialOffsetY = { fullHeight -> fullHeight }) + fadeIn() },
+            popExitTransition = { slideOutVertically(targetOffsetY = { fullHeight -> fullHeight }) + fadeOut() }
+        ) {
             AppDrawerScreen(
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) }
             )

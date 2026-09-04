@@ -43,7 +43,6 @@ class LauncherPreferencesRepository @Inject constructor(
         val OVERLAY_STATUS_BAR_ENABLED = booleanPreferencesKey("overlay_status_bar_enabled")
         val OVERLAY_VOLUME_HUD_ENABLED = booleanPreferencesKey("overlay_volume_hud_enabled")
         val OVERLAY_FLOATING_HUD_ENABLED = booleanPreferencesKey("overlay_floating_hud_enabled")
-        val HAS_SEEDED_DEFAULT_LAYOUT = booleanPreferencesKey("has_seeded_default_layout")
 
         // Retained for forward-compat / migration reference; unused directly.
         @Suppress("unused")
@@ -114,10 +113,6 @@ class LauncherPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.OVERLAY_FLOATING_HUD_ENABLED] = enabled }
     }
 
-    suspend fun setHasSeededDefaultLayout(seeded: Boolean) {
-        dataStore.edit { it[Keys.HAS_SEEDED_DEFAULT_LAYOUT] = seeded }
-    }
-
     suspend fun resetToDefaults() {
         dataStore.edit { it.clear() }
     }
@@ -137,8 +132,7 @@ class LauncherPreferencesRepository @Inject constructor(
                 ?: defaults.gestureMappings,
             overlayStatusBarEnabled = this[Keys.OVERLAY_STATUS_BAR_ENABLED] ?: defaults.overlayStatusBarEnabled,
             overlayVolumeHudEnabled = this[Keys.OVERLAY_VOLUME_HUD_ENABLED] ?: defaults.overlayVolumeHudEnabled,
-            overlayFloatingHudEnabled = this[Keys.OVERLAY_FLOATING_HUD_ENABLED] ?: defaults.overlayFloatingHudEnabled,
-            hasSeededDefaultLayout = this[Keys.HAS_SEEDED_DEFAULT_LAYOUT] ?: defaults.hasSeededDefaultLayout
+            overlayFloatingHudEnabled = this[Keys.OVERLAY_FLOATING_HUD_ENABLED] ?: defaults.overlayFloatingHudEnabled
         )
     }
 

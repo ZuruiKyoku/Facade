@@ -62,10 +62,6 @@ interface WorkspaceDao {
     @Query("SELECT DISTINCT screenPage FROM workspace_items WHERE isDockItem = 0 AND containerId IS NULL ORDER BY screenPage ASC")
     suspend fun getUsedPageIndices(): List<Int>
 
-    /** Every placed item regardless of dock/desktop/folder - used to decide whether the workspace is empty and needs a default layout seeded. */
-    @Query("SELECT COUNT(*) FROM workspace_items")
-    suspend fun countAll(): Int
-
     @Query(
         "SELECT COUNT(*) FROM workspace_items " +
             "WHERE isDockItem = 0 AND containerId IS NULL AND screenPage = :page " +

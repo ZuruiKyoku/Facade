@@ -45,9 +45,7 @@ data class LauncherPreferences(
     val gestureMappings: List<GestureMapping> = defaultGestureMappings(),
     val overlayStatusBarEnabled: Boolean = false,
     val overlayVolumeHudEnabled: Boolean = false,
-    val overlayFloatingHudEnabled: Boolean = false,
-    /** Set once [com.slygames.facade.data.repository.WorkspaceRepository.seedDefaultLayoutIfEmpty] has run, so it's only ever attempted once. */
-    val hasSeededDefaultLayout: Boolean = false
+    val overlayFloatingHudEnabled: Boolean = false
 ) {
     companion object {
         const val DEFAULT_GRID_COLUMNS = 5

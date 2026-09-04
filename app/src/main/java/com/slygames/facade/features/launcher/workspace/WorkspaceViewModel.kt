@@ -53,34 +53,12 @@ class WorkspaceViewModel @Inject constructor(
     val openFolder: StateFlow<FolderSheetState> = _openFolder.asStateFlow()
     private var openFolderJob: Job? = null
 
-    /** Guards [seedDefaultLayoutOnFirstRun] against re-triggering while waiting for [LauncherPreferencesRepository] to persist the flag it just set. */
-    private var seedAttempted = false
-
     init {
         refreshInstalledApps()
-        seedDefaultLayoutOnFirstRun()
     }
 
     fun refreshInstalledApps() {
         viewModelScope.launch { appRepository.refresh() }
-    }
-
-    /**
-     * Fills the dock and page 0 from the installed-app list the very first
-     * time the workspace has never had anything placed, so a fresh install
-     * doesn't land on a totally empty grid. See
-     * [WorkspaceRepository.seedDefaultLayoutIfEmpty].
-     */
-    private fun seedDefaultLayoutOnFirstRun() {
-        viewModelScope.launch {
-            combine(appRepository.apps, preferencesRepository.preferencesFlow) { apps, prefs -> apps to prefs }
-                .collect { (apps, prefs) ->
-                    if (seedAttempted || prefs.hasSeededDefaultLayout || apps.isEmpty()) return@collect
-                    seedAttempted = true
-                    workspaceRepository.seedDefaultLayoutIfEmpty(apps, prefs.gridColumns, prefs.gridRows)
-                    preferencesRepository.setHasSeededDefaultLayout(true)
-                }
-        }
     }
 
     fun onItemMoved(itemId: Long, page: Int, cellX: Int, cellY: Int) {
