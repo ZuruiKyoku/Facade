@@ -1,12 +1,17 @@
 package com.slygames.facade.services.overlay
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -33,15 +38,28 @@ import kotlin.math.roundToInt
 
 @Composable
 fun StatusBarOverlayContent(clockText: String) {
+    // A full-width, fully opaque bar sized to exactly the real status bar's height: this window
+    // draws above the system status bar (that's the whole point - see OverlayWindowController),
+    // so anything less than fully opaque and full-width just doubles up with the real clock/
+    // icons underneath instead of replacing them. Trade-off: this also visually covers the real
+    // battery/signal/notification icons, which Facade doesn't reproduce (yet) - only the clock
+    // renders on top for now.
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        shape = RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp),
-        // The window itself is left-aligned (see OverlayWindowController), but that alone isn't
-        // enough on every device - a punch-hole/notch camera isn't always centered, so this
-        // nudges clear of wherever this specific device's cutout actually is.
-        modifier = Modifier.windowInsetsPadding(WindowInsets.displayCutout)
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsTopHeight(WindowInsets.statusBars)
     ) {
-        Text(text = clockText, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        Box(
+            contentAlignment = Alignment.CenterStart,
+            modifier = Modifier
+                .fillMaxSize()
+                // A punch-hole/notch camera isn't always centered, so this nudges the clock
+                // clear of wherever this specific device's cutout actually is.
+                .windowInsetsPadding(WindowInsets.displayCutout)
+        ) {
+            Text(text = clockText, modifier = Modifier.padding(horizontal = 16.dp))
+        }
     }
 }
 

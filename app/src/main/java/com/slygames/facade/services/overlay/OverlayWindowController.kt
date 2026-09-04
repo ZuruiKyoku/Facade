@@ -74,20 +74,31 @@ class OverlayWindowController(private val serviceContext: Context) {
     }
 
     private fun layoutParamsFor(surface: OverlaySurface): WindowManager.LayoutParams {
-        val (gravity, height) = when (surface) {
-            // START, not a bare TOP (which WindowManager centers horizontally by default): a
-            // centered clock sits directly under a center-mounted punch-hole camera on many
-            // phones. START matches where stock Android draws its own status bar clock, which
-            // is also displayCutout-aware content's fallback-safe corner on every device shape
-            // Facade has seen (front cameras cluster center or right, essentially never far-left).
-            OverlaySurface.STATUS_BAR -> (Gravity.TOP or Gravity.START) to WindowManager.LayoutParams.WRAP_CONTENT
-            OverlaySurface.VOLUME_HUD -> Gravity.CENTER to WindowManager.LayoutParams.WRAP_CONTENT
-            OverlaySurface.FLOATING_HUD -> (Gravity.TOP or Gravity.END) to WindowManager.LayoutParams.WRAP_CONTENT
+        val (gravity, width, height) = when (surface) {
+            // This window draws above the real status bar (that's the point - see
+            // StatusBarOverlayContent), so it spans the full width and is sized to exactly the
+            // real status bar's height, rather than floating a small pill that just doubles up
+            // with the system clock/icons underneath it.
+            OverlaySurface.STATUS_BAR -> Triple(
+                Gravity.TOP or Gravity.START,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            OverlaySurface.VOLUME_HUD -> Triple(
+                Gravity.CENTER,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            OverlaySurface.FLOATING_HUD -> Triple(
+                Gravity.TOP or Gravity.END,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
         }
         val overlayType = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
 
         return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            width,
             height,
             overlayType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
