@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
+    <!-- Wi-Fi connectivity for the custom status bar's Wi-Fi indicator; a normal permission
+         (no runtime prompt) - cellular signal strength would need READ_PHONE_STATE instead,
+         which is why Facade's status bar doesn't attempt to reproduce signal bars. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- ============ Live Wallpaper Engine ============ -->
     <!-- Photo/video selection goes through the system Photo Picker (PickVisualMedia), which

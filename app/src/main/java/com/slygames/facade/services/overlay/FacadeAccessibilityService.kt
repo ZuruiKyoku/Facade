@@ -4,9 +4,10 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
 import android.media.AudioManager
-import android.text.format.DateFormat
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import androidx.compose.ui.graphics.Color
+import com.slygames.facade.data.local.datastore.AppPreferences
 import com.slygames.facade.data.local.datastore.AppPreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -15,10 +16,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -35,12 +39,14 @@ class FacadeAccessibilityService : AccessibilityService() {
 
     private lateinit var overlayController: OverlayWindowController
     private lateinit var audioManager: AudioManager
+    private lateinit var statusBarInfoProvider: StatusBarInfoProvider
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var preferencesJob: Job? = null
+    private var statusBarJob: Job? = null
     private var volumeHudHideJob: Job? = null
 
-    @Volatile
-    private var volumeHudEnabled = false
+    @Volatile private var volumeHudEnabled = false
+    @Volatile private var volumeHudAccent: Color? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -50,6 +56,7 @@ class FacadeAccessibilityService : AccessibilityService() {
         // WindowManager.BadTokenException ("token null is not valid") on addView.
         overlayController = OverlayWindowController(this)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        statusBarInfoProvider = StatusBarInfoProvider(applicationContext)
         // Belt-and-suspenders: android:accessibilityFlags="flagRequestFilterKeyEvents" in
         // accessibility_service_config.xml should be enough on its own, but some OEM builds
         // only honor the flag reliably when it's also set on the live AccessibilityServiceInfo
@@ -57,41 +64,77 @@ class FacadeAccessibilityService : AccessibilityService() {
         serviceInfo = serviceInfo?.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         }
-        observeOverlayToggles()
+        observePreferences()
     }
 
-    private fun observeOverlayToggles() {
+    private fun observePreferences() {
         preferencesJob?.cancel()
         preferencesJob = serviceScope.launch {
-            preferencesRepository.preferencesFlow
-                .map { Triple(it.overlayStatusBarEnabled, it.overlayVolumeHudEnabled, it.overlayFloatingHudEnabled) }
-                .distinctUntilChanged()
-                .collect { (statusBar, volumeHud, floatingHud) ->
-                    applyToggle(OverlaySurface.STATUS_BAR, statusBar) {
+            preferencesRepository.preferencesFlow.collect { prefs ->
+                val accent = prefs.overlayAccentColorArgb?.let { Color(it) }
+                volumeHudAccent = accent
+                volumeHudEnabled = prefs.overlayVolumeHudEnabled
+
+                // Unlike the other two surfaces, the volume HUD isn't shown just because its
+                // toggle is on - it only appears transiently while adjusting volume (see
+                // showVolumeHud). Turning the toggle off should still hide it immediately if it
+                // happens to be up, and cancel its pending auto-hide.
+                if (!prefs.overlayVolumeHudEnabled) {
+                    volumeHudHideJob?.cancel()
+                    overlayController.hide(OverlaySurface.VOLUME_HUD)
+                }
+
+                if (prefs.overlayFloatingHudEnabled) {
+                    overlayController.show(OverlaySurface.FLOATING_HUD, corner = prefs.floatingHudCorner) {
+                        FloatingHudOverlayContent(label = prefs.floatingHudLabel, accentColor = accent)
+                    }
+                } else {
+                    overlayController.hide(OverlaySurface.FLOATING_HUD)
+                }
+
+                updateStatusBar(prefs, accent)
+            }
+        }
+    }
+
+    /** The status bar needs to keep redrawing on its own (a ticking clock, live battery/Wi-Fi
+     * push updates) independent of preference changes, so it gets its own child coroutine that's
+     * restarted - cheaply, given how rarely preferences actually change - on every preferences
+     * emission rather than trying to thread every relevant field through as separate
+     * distinctUntilChanged slices. */
+    private fun updateStatusBar(prefs: AppPreferences, accent: Color?) {
+        statusBarJob?.cancel()
+        if (!prefs.overlayStatusBarEnabled) {
+            overlayController.hide(OverlaySurface.STATUS_BAR)
+            return
+        }
+        statusBarJob = serviceScope.launch {
+            combine(clockTicker(), statusBarInfoProvider.observe()) { _, info -> info }
+                .collect { info ->
+                    overlayController.show(OverlaySurface.STATUS_BAR) {
                         StatusBarOverlayContent(
-                            clockText = DateFormat.getTimeFormat(this@FacadeAccessibilityService).format(Date())
+                            clockText = if (prefs.statusBarShowClock) formatClock(prefs.statusBarUse24HourClock) else null,
+                            batteryPercent = if (prefs.statusBarShowBattery) info.batteryPercent else null,
+                            isCharging = info.isCharging,
+                            batteryStyle = prefs.statusBarBatteryStyle,
+                            wifiConnected = if (prefs.statusBarShowWifi) info.wifiConnected else null,
+                            accentColor = accent
                         )
                     }
-                    // Unlike the other two surfaces, the volume HUD isn't shown just because
-                    // its toggle is on - it only appears transiently while adjusting volume (see
-                    // showVolumeHud). Turning the toggle off should still hide it immediately
-                    // if it happens to be up, and cancel its pending auto-hide.
-                    if (!volumeHud) {
-                        volumeHudHideJob?.cancel()
-                        overlayController.hide(OverlaySurface.VOLUME_HUD)
-                    }
-                    applyToggle(OverlaySurface.FLOATING_HUD, floatingHud) { FloatingHudOverlayContent() }
-                    volumeHudEnabled = volumeHud
                 }
         }
     }
 
-    private inline fun applyToggle(
-        surface: OverlaySurface,
-        enabled: Boolean,
-        crossinline content: @androidx.compose.runtime.Composable () -> Unit
-    ) {
-        if (enabled) overlayController.show(surface) { content() } else overlayController.hide(surface)
+    private fun clockTicker(): Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(CLOCK_TICK_MS)
+        }
+    }
+
+    private fun formatClock(use24h: Boolean): String {
+        val pattern = if (use24h) "HH:mm" else "h:mm a"
+        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date())
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -136,7 +179,7 @@ class FacadeAccessibilityService : AccessibilityService() {
         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
         overlayController.show(OverlaySurface.VOLUME_HUD) {
-            VolumeHudOverlayContent(level = current.toFloat() / max.toFloat())
+            VolumeHudOverlayContent(level = current.toFloat() / max.toFloat(), accentColor = volumeHudAccent)
         }
 
         // Mirrors the system volume panel's own auto-dismiss: restart the hide timer on every
@@ -155,6 +198,7 @@ class FacadeAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         preferencesJob?.cancel()
+        statusBarJob?.cancel()
         volumeHudHideJob?.cancel()
         serviceScope.cancel()
         if (::overlayController.isInitialized) overlayController.hideAll()
@@ -162,6 +206,7 @@ class FacadeAccessibilityService : AccessibilityService() {
 
     private companion object {
         const val VOLUME_HUD_AUTO_HIDE_MS = 1_500L
+        const val CLOCK_TICK_MS = 15_000L
         val VOLUME_KEY_CODES = setOf(
             KeyEvent.KEYCODE_VOLUME_UP,
             KeyEvent.KEYCODE_VOLUME_DOWN,
