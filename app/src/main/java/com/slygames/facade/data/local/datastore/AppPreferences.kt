@@ -5,9 +5,6 @@ package com.slygames.facade.data.local.datastore
  * custom serializer; the overlay code owns the actual enum). */
 enum class BatteryIconStyle { CLASSIC, MINIMAL, BOLD }
 
-/** Which corner of the screen the floating HUD widget docks to. */
-enum class HudCorner { TOP_START, TOP_END, BOTTOM_START, BOTTOM_END }
-
 /**
  * Snapshot of every user-configurable, non-wallpaper-specific setting
  * (wallpaper's own knobs live in [WallpaperPreferences]), persisted via
@@ -17,7 +14,6 @@ data class AppPreferences(
     val dynamicColorEnabled: Boolean = true,
     val overlayStatusBarEnabled: Boolean = false,
     val overlayVolumeHudEnabled: Boolean = false,
-    val overlayFloatingHudEnabled: Boolean = false,
 
     // Status bar content - each element is independently toggleable so the bar can be as
     // minimal or as busy as the user wants.
@@ -27,12 +23,7 @@ data class AppPreferences(
     val statusBarUse24HourClock: Boolean = false,
     val statusBarBatteryStyle: BatteryIconStyle = BatteryIconStyle.CLASSIC,
 
-    // Floating HUD placement/label.
-    val floatingHudCorner: HudCorner = HudCorner.TOP_END,
-    val floatingHudLabel: String = "Facade",
-
-    // A custom accent used for overlay icons/text/the floating HUD's background; null means
-    // "follow the app's own theme" (Material You or the static fallback palette) instead of a
-    // fixed color the user picked.
+    // A custom accent used for overlay icons/text; null means "follow the app's own theme"
+    // (Material You or the static fallback palette) instead of a fixed color the user picked.
     val overlayAccentColorArgb: Int? = null
 )

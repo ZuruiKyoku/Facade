@@ -97,7 +97,7 @@ fun SettingsScreen(
                 ListItem(
                     leadingContent = { Icon(Icons.Filled.Widgets, contentDescription = null) },
                     headlineContent = { Text("Surface overlays") },
-                    supportingContent = { Text("Floating HUDs, status bar, volume controls") },
+                    supportingContent = { Text("Custom status bar, volume controls") },
                     trailingContent = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onNavigateToOverlays)
                 )

@@ -8,7 +8,6 @@ import com.slygames.facade.core.permission.PermissionState
 import com.slygames.facade.data.local.datastore.AppPreferences
 import com.slygames.facade.data.local.datastore.AppPreferencesRepository
 import com.slygames.facade.data.local.datastore.BatteryIconStyle
-import com.slygames.facade.data.local.datastore.HudCorner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -64,10 +63,6 @@ class OverlaySettingsViewModel @Inject constructor(
         preferencesRepository.setOverlayVolumeHudEnabled(enabled)
     }
 
-    fun setFloatingHudEnabled(enabled: Boolean) = viewModelScope.launch {
-        preferencesRepository.setOverlayFloatingHudEnabled(enabled)
-    }
-
     fun setStatusBarShowClock(show: Boolean) = viewModelScope.launch {
         preferencesRepository.setStatusBarShowClock(show)
     }
@@ -86,14 +81,6 @@ class OverlaySettingsViewModel @Inject constructor(
 
     fun setStatusBarBatteryStyle(style: BatteryIconStyle) = viewModelScope.launch {
         preferencesRepository.setStatusBarBatteryStyle(style)
-    }
-
-    fun setFloatingHudCorner(corner: HudCorner) = viewModelScope.launch {
-        preferencesRepository.setFloatingHudCorner(corner)
-    }
-
-    fun setFloatingHudLabel(label: String) = viewModelScope.launch {
-        preferencesRepository.setFloatingHudLabel(label)
     }
 
     fun setOverlayAccentColor(argb: Int?) = viewModelScope.launch {

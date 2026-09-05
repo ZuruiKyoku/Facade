@@ -177,30 +177,5 @@ fun VolumeHudOverlayContent(level: Float, accentColor: Color? = null) {
     }
 }
 
-@Composable
-fun FloatingHudOverlayContent(label: String, accentColor: Color? = null) {
-    val background = accentColor ?: MaterialTheme.colorScheme.primaryContainer
-    // contentColorFor only knows the fixed set of Material3 role colors; an arbitrary
-    // user-picked accent needs its own readable-text decision instead of falling through to
-    // whatever LocalContentColor happens to be.
-    val onBackground = if (accentColor != null) readableTextColor(accentColor) else MaterialTheme.colorScheme.onPrimaryContainer
-    Surface(color = background, shape = RoundedCornerShape(16.dp)) {
-        Text(
-            text = label,
-            color = onBackground,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-        )
-    }
-}
-
-/** Relative luminance (sRGB) thresholded at the standard 0.5 midpoint - simple, but reliable
- * across the full range of colors a user could pick from the accent swatch, unlike
- * [androidx.compose.material3.contentColorFor] which only special-cases known theme roles. */
-private fun readableTextColor(background: Color): Color {
-    val luminance = 0.299f * background.red + 0.587f * background.green + 0.114f * background.blue
-    return if (luminance > 0.5f) Color.Black else Color.White
-}
-
 private val CHARGING_GREEN = Color(0xFF2E7D32)
 private val LOW_BATTERY_RED = Color(0xFFC62828)

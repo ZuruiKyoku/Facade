@@ -11,7 +11,7 @@ import javax.inject.Singleton
 /**
  * Wraps `SYSTEM_ALERT_WINDOW` ("display over other apps"), required by the
  * Surface Overlay Engine to host [android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY]
- * windows (floating HUDs, custom status bar, volume controls).
+ * windows (custom status bar, volume controls).
  */
 @Singleton
 class OverlayPermissionHandler @Inject constructor(

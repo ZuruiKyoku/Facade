@@ -28,8 +28,8 @@ import javax.inject.Inject
 /**
  * Surface Overlay Engine: an [AccessibilityService] used purely as a host
  * for [android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY]
- * windows - floating HUDs, a custom status bar, and an interceptable volume
- * control - not for reading other apps' window content (`canRetrieveWindowContent="false"`
+ * windows - a custom status bar and an interceptable volume control - not
+ * for reading other apps' window content (`canRetrieveWindowContent="false"`
  * in `res/xml/accessibility_service_config.xml`).
  */
 @AndroidEntryPoint
@@ -84,14 +84,6 @@ class FacadeAccessibilityService : AccessibilityService() {
                     overlayController.hide(OverlaySurface.VOLUME_HUD)
                 }
 
-                if (prefs.overlayFloatingHudEnabled) {
-                    overlayController.show(OverlaySurface.FLOATING_HUD, corner = prefs.floatingHudCorner) {
-                        FloatingHudOverlayContent(label = prefs.floatingHudLabel, accentColor = accent)
-                    }
-                } else {
-                    overlayController.hide(OverlaySurface.FLOATING_HUD)
-                }
-
                 updateStatusBar(prefs, accent)
             }
         }
@@ -139,7 +131,7 @@ class FacadeAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Facade doesn't act on window-state changes today; the config only listens for them
-        // in case a future release wants per-app HUD visibility (e.g. hide the floating HUD
+        // in case a future release wants per-app behavior (e.g. hiding the status bar overlay
         // while a video/game app is foregrounded).
     }
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Descriptor for FacadeAccessibilityService. Facade uses the accessibility
-  service purely as a TYPE_ACCESSIBILITY_OVERLAY window host (floating HUDs,
-  custom status bar indicators, interceptable volume controls) - it does not
-  read window content from other apps.
+  service purely as a TYPE_ACCESSIBILITY_OVERLAY window host (a custom
+  status bar, interceptable volume controls) - it does not read window
+  content from other apps.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"

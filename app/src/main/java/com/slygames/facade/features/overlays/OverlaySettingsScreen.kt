@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -25,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -45,7 +43,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slygames.facade.core.permission.PermissionState
 import com.slygames.facade.data.local.datastore.BatteryIconStyle
-import com.slygames.facade.data.local.datastore.HudCorner
 
 @Composable
 fun OverlaySettingsScreen(
@@ -88,7 +85,7 @@ fun OverlaySettingsScreen(
             if (state.overlayPermissionState != PermissionState.GRANTED) {
                 ListItem(
                     headlineContent = { Text("Display over other apps") },
-                    supportingContent = { Text("Required to draw floating HUDs") },
+                    supportingContent = { Text("Required to draw overlay surfaces") },
                     trailingContent = {
                         Button(onClick = { context.startActivity(viewModel.buildOverlayPermissionIntent()) }) {
                             Text("Grant")
@@ -127,16 +124,6 @@ fun OverlaySettingsScreen(
                         checked = prefs.overlayVolumeHudEnabled,
                         enabled = state.prerequisitesMet,
                         onCheckedChange = viewModel::setVolumeHudEnabled
-                    )
-                }
-            )
-            ListItem(
-                headlineContent = { Text("Floating HUD widgets") },
-                trailingContent = {
-                    Switch(
-                        checked = prefs.overlayFloatingHudEnabled,
-                        enabled = state.prerequisitesMet,
-                        onCheckedChange = viewModel::setFloatingHudEnabled
                     )
                 }
             )
@@ -179,27 +166,9 @@ fun OverlaySettingsScreen(
             )
 
             HorizontalDivider()
-            SectionHeader("Floating HUD")
-            ListItem(headlineContent = { Text("Screen corner") })
-            CornerPicker(
-                selected = prefs.floatingHudCorner,
-                onSelect = viewModel::setFloatingHudCorner,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            )
-            OutlinedTextField(
-                value = prefs.floatingHudLabel,
-                onValueChange = viewModel::setFloatingHudLabel,
-                label = { Text("Label") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            HorizontalDivider()
             SectionHeader("Accent color")
             Text(
-                text = "Tints the status bar's icons and text, the volume HUD, and the floating HUD's background.",
+                text = "Tints the status bar's icons and text and the volume HUD.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -237,52 +206,6 @@ private fun BatteryStyleRow(
                 selected = style == selected,
                 onClick = { onSelect(style) },
                 label = { Text(style.name.lowercase().replaceFirstChar { it.uppercase() }) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun CornerPicker(
-    selected: HudCorner,
-    onSelect: (HudCorner) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // A little 2x2 map of the screen so picking a corner is spatial, not a dropdown of labels.
-    Column(
-        modifier = modifier
-            .size(width = 96.dp, height = 72.dp)
-            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(12.dp))
-            .padding(4.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            CornerDot(selected == HudCorner.TOP_START) { onSelect(HudCorner.TOP_START) }
-            CornerDot(selected == HudCorner.TOP_END) { onSelect(HudCorner.TOP_END) }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            CornerDot(selected == HudCorner.BOTTOM_START) { onSelect(HudCorner.BOTTOM_START) }
-            CornerDot(selected == HudCorner.BOTTOM_END) { onSelect(HudCorner.BOTTOM_END) }
-        }
-    }
-}
-
-@Composable
-private fun CornerDot(selected: Boolean, onClick: () -> Unit) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(28.dp)
-            .clickable(onClick = onClick)
-            .background(color, CircleShape)
-    ) {
-        if (selected) {
-            Icon(
-                Icons.Filled.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(16.dp)
             )
         }
     }

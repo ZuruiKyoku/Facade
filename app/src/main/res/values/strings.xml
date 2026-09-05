@@ -6,11 +6,11 @@
     <string name="wallpaper_service_label">Facade Live Wallpaper</string>
     <string name="wallpaper_description">Play looping video and animated wallpapers behind your desktop.</string>
     <string name="accessibility_service_label">Facade Surface Overlays</string>
-    <string name="accessibility_service_description">Lets Facade draw floating HUDs, custom status bar indicators, and volume overlays on top of other apps. Facade does not read the content of other apps\' windows.</string>
+    <string name="accessibility_service_description">Lets Facade draw a custom status bar and volume overlay on top of other apps. Facade does not read the content of other apps\' windows.</string>
 
     <!-- Permission onboarding -->
     <string name="permission_overlay_title">Allow display over other apps</string>
-    <string name="permission_overlay_body">Needed to host floating widgets and HUD overlays above other apps.</string>
+    <string name="permission_overlay_body">Needed to host the status bar and volume overlays above other apps.</string>
     <string name="permission_accessibility_title">Enable the Facade overlay service</string>
     <string name="permission_accessibility_body">Powers status bar replacements and interceptable volume HUDs.</string>
     <string name="permission_shizuku_title">Connect to Shizuku</string>
