@@ -5,8 +5,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -64,6 +71,7 @@ fun SettingsScreen(
             item { SectionHeader("Appearance") }
             item {
                 ListItem(
+                    leadingContent = { Icon(Icons.Filled.Palette, contentDescription = null) },
                     headlineContent = { Text("Wallpaper-based color (Material You)") },
                     trailingContent = {
                         Switch(checked = prefs.dynamicColorEnabled, onCheckedChange = settingsViewModel::setDynamicColorEnabled)
@@ -75,8 +83,10 @@ fun SettingsScreen(
             item { SectionHeader(stringResource(R.string.settings_section_wallpaper)) }
             item {
                 ListItem(
+                    leadingContent = { Icon(Icons.Filled.Wallpaper, contentDescription = null) },
                     headlineContent = { Text("Wallpaper") },
                     supportingContent = { Text("Set a photo, or a looping video background") },
+                    trailingContent = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onNavigateToWallpaperPicker)
                 )
             }
@@ -85,8 +95,10 @@ fun SettingsScreen(
             item { SectionHeader(stringResource(R.string.settings_section_overlays)) }
             item {
                 ListItem(
+                    leadingContent = { Icon(Icons.Filled.Widgets, contentDescription = null) },
                     headlineContent = { Text("Surface overlays") },
                     supportingContent = { Text("Floating HUDs, status bar, volume controls") },
+                    trailingContent = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onNavigateToOverlays)
                 )
             }
@@ -95,8 +107,10 @@ fun SettingsScreen(
             item { SectionHeader(stringResource(R.string.settings_section_system_tweaks)) }
             item {
                 ListItem(
+                    leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
                     headlineContent = { Text("Shizuku system tweaks") },
                     supportingContent = { Text("Animation scales, UI tuner toggles") },
+                    trailingContent = { Icon(Icons.Filled.ChevronRight, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onNavigateToSystemTweaks)
                 )
             }
